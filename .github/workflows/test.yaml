@@ -35,6 +35,8 @@ jobs:
         provider: microk8s
         channel: ${{ matrix.microk8s }}
         juju-channel: ${{ matrix.juju }}
+    - name: Prepare lxc project
+      run: lxc --project charmcraft project create local:charmcraft
     - name: Run test
       run: sg snap_microk8s -c "tox -e integration"
     - name: Setup Debug Artifact Collection
