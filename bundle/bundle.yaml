@@ -1,0 +1,8 @@
+bundle: kubernetes
+applications:
+  volcano-admission:
+    charm: volcano-admission
+  volcano-controller-manager:
+    charm: volcano-controller-manager
+  volcano-scheduler:
+    charm: volcano-scheduler
