@@ -18,9 +18,36 @@ jobs:
     with:
       python: "['3.8', '3.9', '3.10', '3.11']"
 
-  integration-test:
+  build-dependencies:
+    name: Build Charm
     runs-on: ubuntu-22.04
+    needs:
+      - lint-unit
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Setup operator environment
+      uses: charmed-kubernetes/actions-operator@main
+      with:
+        provider: lxd
+        charmcraft-channel: 2.x/stable
+
+    - name: Build Charm
+      run: |
+        charmcraft pack -p charms/volcano-admission
+        charmcraft pack -p charms/volcano-controller-manager
+        charmcraft pack -p charms/volcano-scheduler
+
+    - name: Upload charm artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: charm
+        path: ./*.charm
+
+  integration-test:
     name: Integration test
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
       matrix:
@@ -29,16 +56,25 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v3
+
     - name: Setup operator environment
       uses: charmed-kubernetes/actions-operator@main
       with:
         provider: microk8s
         channel: ${{ matrix.microk8s }}
         juju-channel: ${{ matrix.juju }}
+
+    - name: Download charm artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: charm
+
     - name: Prepare lxc project
       run: lxc --project charmcraft project create local:charmcraft
+
     - name: Run test
-      run: tox -e integration
+      run: sg microk8s -c "tox -e integration"
+
     - name: Setup Debug Artifact Collection
       if: ${{ failure() }}
       run: mkdir tmp
