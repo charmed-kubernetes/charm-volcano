@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        microk8s: ["1.25/stable", "1.26/stable"]
+        microk8s: ["1.25-strict/stable", "1.26-strict/stable"]
         juju: ["2.9/stable", "3.0/stable"]
     steps:
     - name: Check out code

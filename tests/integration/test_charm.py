@@ -37,6 +37,7 @@ class Charm:
 
     @property
     async def resources(self) -> dict:
+        """Charm resources."""
         return {}
 
     async def resolve(self, ops_test: OpsTest) -> Path:
@@ -69,7 +70,8 @@ async def test_build_and_deploy(ops_test: OpsTest):
     """
     # Build and deploy charms from local source folder
     charms = [
-        Charm(Path("charms") / f"volcano-{_}") for _ in ("admission", "controller-manager", "scheduler")
+        Charm(Path("charms") / f"volcano-{_}")
+        for _ in ("admission", "controller-manager", "scheduler")
     ]
 
     # Deploy the charm and wait for active/idle status
