@@ -28,12 +28,16 @@ class Charm:
     @property
     def metadata(self) -> dict:
         """Charm Metadata."""
-        return yaml.safe_load(self.path / "metadata.yaml").read_text()
+        return yaml.safe_load((self.path / "metadata.yaml").read_text())
 
     @property
     def app_name(self) -> str:
         """Suggested charm name."""
         return self.metadata["name"]
+
+    @property
+    async def resources(self) -> dict:
+        return {}
 
     async def resolve(self, ops_test: OpsTest) -> Path:
         """Build the charm with ops_test."""
@@ -52,7 +56,7 @@ class Charm:
         """Deploy charm."""
         await ops_test.model.deploy(
             await self.resolve(ops_test),
-            resources=self.resources,
+            resources=await self.resources,
             application_name=self.app_name,
         )
 
@@ -65,12 +69,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
     """
     # Build and deploy charms from local source folder
     charms = [
-        Charm("charm" / _) for _ in ("admission", "controller-manager", "scheduler")
+        Charm(Path("charms") / f"volcano-{_}") for _ in ("admission", "controller-manager", "scheduler")
     ]
 
     # Deploy the charm and wait for active/idle status
     await asyncio.gather(
-        *map(charm.deploy(ops_test) for charm in charms),
+        *(charm.deploy(ops_test) for charm in charms),
         ops_test.model.wait_for_idle(
             apps=[n.app_name for n in charms],
             status="active",
