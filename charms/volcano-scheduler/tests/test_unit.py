@@ -1,12 +1,11 @@
 """Unit tests."""
 
 import unittest
-from unittest.mock import Mock, patch
-
-from charm import CharmVolcano
 
 from ops.model import ActiveStatus
 from ops.testing import Harness
+
+from charm import CharmVolcano
 
 
 class TestCharm(unittest.TestCase):
