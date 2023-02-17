@@ -76,7 +76,7 @@ jobs:
       run: lxc --project charmcraft project create local:charmcraft
 
     - name: Run test
-      run: sg microk8s -c "tox -e integration"
+      run: sg snap_microk8s -c "tox -e integration"
 
     - name: Setup Debug Artifact Collection
       if: ${{ failure() }}
