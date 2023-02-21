@@ -75,6 +75,9 @@ jobs:
     - name: Prepare lxc project
       run: lxc --project charmcraft project create local:charmcraft
 
+    - name: Create volcano-system model
+      run: sg snap_microk8s -c "juju add-model volcano-system"
+
     - name: Run test
       run: sg snap_microk8s -c "tox -e integration"
 

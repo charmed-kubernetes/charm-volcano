@@ -92,6 +92,7 @@ spec:
         app: volcano-controller
     spec:
       serviceAccount: {{ Release.Name }}-controllers
+      automountServiceAccountToken: true
       priorityClassName: system-cluster-critical
       {% if Values.basic.image_pull_secret %}
       imagePullSecrets:

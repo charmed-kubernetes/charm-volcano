@@ -78,6 +78,7 @@ spec:
         app: volcano-admission
     spec:
       serviceAccount: {{ Release.Name }}-admission
+      automountServiceAccountToken: true
       priorityClassName: system-cluster-critical
       {% if Values.basic.image_pull_secret -%}
       imagePullSecrets:
@@ -144,6 +145,7 @@ spec:
   template:
     spec:
       serviceAccountName: {{ Release.Name }}-admission
+      automountServiceAccountToken: true
       priorityClassName: system-cluster-critical
       {% if Values.basic.image_pull_secret -%}
       imagePullSecrets:

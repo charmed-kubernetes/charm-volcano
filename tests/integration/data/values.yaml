@@ -1,8 +1,8 @@
 basic:
   image_tag_version: "v1.7.0"
-  controller_image_name: "volcanosh/vc-controller-manager"
-  scheduler_image_name: "volcanosh/vc-scheduler"
-  admission_image_name: "volcanosh/vc-webhook-manager"
+  controller_image_name: "rocks.canonical.com/cdk/volcanosh/vc-controller-manager"
+  scheduler_image_name: "rocks.canonical.com/cdk/volcanosh/vc-scheduler"
+  admission_image_name: "rocks.canonical.com/cdk/volcanosh/vc-webhook-manager"
   admission_secret_name: "volcano-admission-secret"
   admission_config_file: "config/volcano-admission.conf"
   scheduler_config_file: "config/volcano-scheduler.conf"

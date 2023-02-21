@@ -81,16 +81,29 @@ def _regex_match(value: str, regex: str) -> str:
 
 
 def render_templates(
-    basedir: Path, *templates: Path, context: Union[dict, None] = None
+    basedir: Path,
+    *templates: Path,
+    values: Union[Path, dict] = None,
+    name: str = "volcano",
+    namespace: str = "volcano-system",
 ) -> Sequence[str]:
     """Render a set of charm templates returning as an sequence of str.
 
     @param Path basedir: base directory where Files.Glob can find config files
     @param Path templates: set of templates to render with the given context
-    @param dict context: key-value pairs used to render the templates.
+    @param Union[Path,dict] value: key-value pairs used to render the templates.
+    @param str name: name of the underlying application being deployed
+    @param str namespace: namespace to deploy the application
     """
-    if context is None:
-        context = {}
+    if isinstance(values, Path):
+        values = yaml.safe_load(values.read_text())
+    context = {
+        "Values": values,
+        "Release": {
+            "Name": name,
+            "Namespace": namespace,
+        },
+    }
 
     env = Environment(loader=FileSystemLoader("/"))
 
@@ -124,14 +137,12 @@ if __name__ == "__main__":
     parser.add_argument("--basedir", type=Path, default=Path())
     args = parser.parse_args()
 
-    context = {
-        "Values": yaml.safe_load((args.basedir / args.values).read_text()),
-        "Release": {
-            "Name": args.name,
-            "Namespace": args.namespace,
-        },
-    }
-
-    for each in render_templates(args.basedir, *args.templates, context=context):
+    for each in render_templates(
+        args.basedir,
+        *args.templates,
+        values=args.basedir / args.values,
+        name=args.name,
+        namespace=args.namespace,
+    ):
         print(each)
         print("---")
