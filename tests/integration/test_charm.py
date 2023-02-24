@@ -8,14 +8,14 @@ See LICENSE file for licensing details.
 import asyncio
 import datetime
 import logging
-from dataclasses import dataclass
-from itertools import chain
+import re
 from pathlib import Path
+from typing import Sequence
 
 import pytest
-import yaml
 from lightkube import codecs
 from lightkube.resources.apps_v1 import Deployment
+from lightkube.resources.core_v1 import Pod
 from pytest_operator.plugin import OpsTest
 
 from lib.templating import render_templates
@@ -23,82 +23,21 @@ from lib.templating import render_templates
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Charm:
-    """Represents source charms."""
-
-    path: Path
-    _charmfile: Path = None
-
-    @property
-    def metadata(self) -> dict:
-        """Charm Metadata."""
-        return yaml.safe_load((self.path / "metadata.yaml").read_text())
-
-    @property
-    def app_name(self) -> str:
-        """Suggested charm name."""
-        return self.metadata["name"]
-
-    @property
-    async def resources(self) -> dict:
-        """Charm resources."""
-        return {}
-
-    async def resolve(self, ops_test: OpsTest) -> Path:
-        """Build the charm with ops_test."""
-        if self._charmfile is None:
-            try:
-                charm_name = f"{self.app_name}*.charm"
-                potentials = chain(
-                    *(path.glob(charm_name) for path in (Path(), self.path))
-                )
-                self._charmfile, *_ = filter(None, potentials)
-            except ValueError:
-                self._charmfile = await ops_test.build_charm(self.path)
-        return self._charmfile.resolve()
-
-    async def deploy(self, ops_test: OpsTest, **kwargs):
-        """Deploy charm."""
-        await ops_test.model.deploy(
-            str(await self.resolve(ops_test)),
-            resources=await self.resources,
-            application_name=self.app_name,
-            series="jammy",
-            **kwargs,
-        )
-
-
 @pytest.mark.abort_on_fail
+@pytest.mark.usefixtures("volcano_system")
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it together with related charms.
 
     Assert on the unit status before any relations/configurations take place.
     """
-    # Build and deploy charms from local source folder
-    charms = [
-        Charm(Path("charms") / f"volcano-{_}")
-        for _ in ("admission", "controller-manager", "scheduler")
-    ]
-
-    # Deploy the charm and wait for active/idle status
-    await asyncio.gather(
-        *(charm.deploy(ops_test, trust=True) for charm in charms),
-        ops_test.model.wait_for_idle(
-            apps=[n.app_name for n in charms],
-            status="active",
-            raise_on_blocked=True,
-            timeout=1000,
-        ),
-    )
 
 
-def check_deployments_ready(volcano_system, unready, timeout=5 * 60):
+def check_deployments_ready(kubernetes, unready, timeout=5 * 60, **kw):
     """Loop until deployments are ready or raise timeout."""
     starting = datetime.datetime.now()
     ending = starting + datetime.timedelta(seconds=timeout)
     while datetime.datetime.now() < ending:
-        for dep in volcano_system.list(Deployment):
+        for dep in kubernetes.list(Deployment, **kw):
             if dep.status.readyReplicas == 1:
                 unready.discard(dep.metadata.name)
         if not unready:
@@ -107,7 +46,8 @@ def check_deployments_ready(volcano_system, unready, timeout=5 * 60):
     raise TimeoutError()
 
 
-async def test_load_uncharmed_manifests(ops_test, volcano_system):
+@pytest.mark.usefixtures("volcano_system")
+async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
     """Test all deployments are ready after installation."""
     workspace = Path(".")
     basedir = workspace / "tests" / "integration" / "data"
@@ -125,7 +65,7 @@ async def test_load_uncharmed_manifests(ops_test, volcano_system):
         "volcano-admission/templates/webhooks.yaml",
     ]
     _ = [
-        volcano_system.apply(r)
+        kubernetes.apply(r, namespace="volcano-system")
         for t in render_templates(
             basedir,
             *map(lambda _: charms / _, templates),
@@ -136,6 +76,58 @@ async def test_load_uncharmed_manifests(ops_test, volcano_system):
         for r in codecs.load_all_yaml(t)
     ]
     assert check_deployments_ready(
-        volcano_system,
+        kubernetes,
         {"volcano-admission", "volcano-scheduler", "volcano-controllers"},
+        namespace="volcano-system",
     )
+
+
+@pytest.mark.usefixtures("volcano_system")
+@pytest.mark.usefixtures("kubeflow")
+async def test_scheduler(ops_test: OpsTest, kubernetes):
+    """Test the volcano scheduler can accept new queues, a new VCJob, and a TFJob."""
+    basedir = Path(".") / "tests" / "integration" / "data" / "volcano"
+    sched_status_re = re.compile(
+        r"There are <(\d+)> Jobs, <(\d+)> Queues and <\d+> Nodes"
+    )
+
+    def _parse_scheduler_logs(lines) -> Sequence[int]:
+        for line in lines:
+            if m := sched_status_re.search(line):
+                return map(int, m.groups())
+        return 0, 0
+
+    def _from_file(path):
+        return codecs.load_all_yaml(path.read_text())
+
+    objects = (
+        _from_file(basedir / "queue.yaml")
+        + _from_file(basedir / "tfjob.yaml")
+        + _from_file(basedir / "vcjob.yaml")
+    )
+
+    test_start = datetime.datetime.now()
+    try:
+        for obj in objects:
+            kubernetes.create(obj)
+        await asyncio.sleep(10)
+        ns = "volcano-system"
+        (scheduler,) = kubernetes.list(
+            Pod, namespace=ns, labels={"app": "volcano-scheduler"}
+        )
+        log_time = datetime.datetime.now()
+        jobs, queues = _parse_scheduler_logs(
+            kubernetes.log(
+                scheduler.metadata.name,
+                namespace=ns,
+                container=scheduler.spec.containers[0].name,
+                since=(log_time - test_start).seconds,
+            )
+        )
+        assert jobs == 2, f"Expected to find 2 Jobs, instead found {jobs}"
+        assert queues == 2, f"Expected to find 2 Queues, instead found {queues}"
+    finally:
+        for obj in objects:
+            kubernetes.delete(
+                type(obj), obj.metadata.name, namespace=obj.metadata.namespace
+            )
