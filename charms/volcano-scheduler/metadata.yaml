@@ -21,3 +21,12 @@ description: |
   These types of applications typically run on generalized domain frameworks 
   like TensorFlow, Spark, Ray, PyTorch, MPI, etc, which Volcano integrates with.
 
+containers:
+  volcano:
+    resource: volcano-scheduler-image
+
+resources:
+  volcano-scheduler-image:
+    type: oci-image
+    description: OCI Image for volcano-scheduler.
+    upstream-source: rocks.canonical.com/cdk/volcanosh/vc-scheduler:v1.7.0

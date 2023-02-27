@@ -57,7 +57,7 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
         "volcano-admission/templates/admission.yaml",
         "volcano-scheduler/templates/crd/v1/batch.volcano.sh_jobs.yaml",
         "volcano-scheduler/templates/crd/v1/bus.volcano.sh_commands.yaml",
-        "volcano-controller-manager/templates/controllers.yaml",
+        "volcano-controller/templates/controllers.yaml",
         "volcano-scheduler/templates/scheduler.yaml",
         "volcano-scheduler/templates/crd/v1/scheduling.volcano.sh_podgroups.yaml",
         "volcano-scheduler/templates/crd/v1/scheduling.volcano.sh_queues.yaml",
@@ -92,7 +92,7 @@ async def test_scheduler(ops_test: OpsTest, kubernetes):
     )
 
     def _parse_scheduler_logs(lines) -> Sequence[int]:
-        for line in lines:
+        for line in reversed(list(lines)):
             if m := sched_status_re.search(line):
                 return map(int, m.groups())
         return 0, 0
@@ -113,14 +113,15 @@ async def test_scheduler(ops_test: OpsTest, kubernetes):
         await asyncio.sleep(10)
         ns = "volcano-system"
         (scheduler,) = kubernetes.list(
-            Pod, namespace=ns, labels={"app": "volcano-scheduler"}
+            Pod, namespace=ns, labels={"app.kubernetes.io/name": "volcano-scheduler"}
         )
+        (container,) = [c.name for c in scheduler.spec.containers if "volcano" in c.name]
         log_time = datetime.datetime.now()
         jobs, queues = _parse_scheduler_logs(
             kubernetes.log(
                 scheduler.metadata.name,
                 namespace=ns,
-                container=scheduler.spec.containers[0].name,
+                container=container,
                 since=(log_time - test_start).seconds,
             )
         )
