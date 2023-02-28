@@ -88,7 +88,6 @@ class Manifests:
             rtype = resource_type._api_info.resource.kind
             log.info(f"Deleted {rtype}({name}, namespace={namespace})")
 
-
     def apply(self):
         """Apply all manifests managed by this charm."""
         for obj in self._sorted_resources:

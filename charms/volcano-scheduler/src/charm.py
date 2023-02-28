@@ -18,6 +18,7 @@ from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
+from config import ConfigError
 from manifests import Manifests
 from scheduler import Scheduler, SchedulerArgs, SchedulerConfig
 

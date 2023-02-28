@@ -1,3 +1,5 @@
+"""Establish handler for the sidecar container."""
+
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,20 +12,27 @@ CONFIG_FILE = Path("/", "volcano.scheduler", "volcano-scheduler.yaml")
 
 
 class SchedulerPlugin(TypedDict):
+    """Model config for the Scheduler plugin."""
+
     name: str
-    enablePreemptable: bool = True
+    enablePreemptable: bool = True  # noqa: N815
 
 
 class SchedulerPlugins(TypedDict):
+    """Model config for the Scheduler plugin list."""
+
     plugins: List[SchedulerPlugin]
 
 
 class SchedulerConfig(TypedDict):
+    """Model config for the Scheduler."""
+
     actions: str
     tiers: List[SchedulerPlugins]
 
     @classmethod
     def load(cls, charm):
+        """Load scheduler config from charm config and relations."""
         return DEFAULT_CONFIG
 
 
@@ -53,6 +62,8 @@ DEFAULT_CONFIG = SchedulerConfig(
 
 @dataclass
 class SchedulerArgs:
+    """Model command line arguments for the scheduler."""
+
     enable_healthz: str = "true"
     enable_metrics: str = "false"
     loglevel: int = 3
@@ -60,11 +71,14 @@ class SchedulerArgs:
 
     @classmethod
     def load(cls, charm):
+        """Load scheduler args from charm config and relations."""
         return cls()
 
 
 @dataclass
 class Scheduler:
+    """Update Pebble config based on charm config and relations."""
+
     config: SchedulerConfig = None
     command: str = ""
 
@@ -88,19 +102,21 @@ class Scheduler:
         return self
 
     def apply(self, charm, config, args):
+        """Update commandline for container."""
         self._build_command(charm, args)
         self.config = config
         return self
 
     def restart(self, container):
+        """Update pebble layer for container."""
         root_owned = dict(permissions=0o600, user_id=0, group_id=0)
-        container.add_layer(container.name, self.layer, combine=True)
+        container.add_layer(container.name, self._layer, combine=True)
         container.push(*self.config_file, make_dirs=True, **root_owned)
         container.autostart()
         container.restart(container.name)
 
     @property
-    def layer(self):
+    def _layer(self):
         logger.info("starting volcano binary with command %s", self.command)
         return {
             "summary": "volcano service layer",
@@ -117,8 +133,10 @@ class Scheduler:
 
     @property
     def binary(self):
+        """List expected binary in scheduler container."""
         return Path("/", "vc-scheduler")
 
     @property
     def config_file(self) -> Tuple[str, str]:
+        """Generate scheduler conf file."""
         return str(CONFIG_FILE), yaml.safe_dump(self.config)
