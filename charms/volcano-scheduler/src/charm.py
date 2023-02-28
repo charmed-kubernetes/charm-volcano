@@ -16,7 +16,8 @@ import logging
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+
 from manifests import Manifests
 from scheduler import Scheduler, SchedulerArgs, SchedulerConfig
 
@@ -65,19 +66,16 @@ class CharmVolcano(CharmBase):
             self.unit.status = BlockedStatus(f"Image missing executable: {scheduler.binary}")
             return
 
-        scheduler.authorize(container)
-
         manifests = Manifests(self)
         if self.unit.is_leader():
-            manifests.apply_manifests()
+            manifests.apply()
 
-        container.autostart()
-        container.restart(container.name)
+        scheduler.restart(container)
         self.unit.status = ActiveStatus()
 
     def _set_version(self, _event=None):
         if self.unit.is_leader():
-            self.unit.set_workload_version("Scheduling")
+            self.unit.set_workload_version("v1.7.0")
 
     def _cleanup(self, _):
         cont = self.model.unit.get_container(self.CONTAINER)

@@ -1,54 +1,62 @@
+"""Apply extra manifests for enabling the scheduler and its config."""
+
 import logging
-from functools import cached_property
 from pathlib import Path
+from typing import List, Sequence
 
+from jinja2 import Environment, FileSystemLoader
 from lightkube import Client, codecs
-from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.core.exceptions import ApiError
+from lightkube.core.resource import Resource
+from lightkube.generic_resource import load_in_cluster_generic_resources
 
-log = logging.getLogger(__file__)
-BASE = "v1" # assumes we're in a k8s cluster that has access to v1 CRDs
+log = logging.getLogger(__name__)
+CRD_BASE = "v1"  # assumes we're in a k8s cluster that has access to v1 CRDs
+
 
 class Manifests:
+    """Render manifests from charm config and apply to the cluster."""
+
     def __init__(self, charm):
+        self._charm = charm
         self.namespace = charm.model.name
         self.application = charm.model.app.name
         self.client = Client(namespace=self.namespace, field_manager=self.application)
         load_in_cluster_generic_resources(self.client)
 
-    @cached_property
-    def base(self):
-        return BASE
+    @property
+    def _resources(self) -> Sequence[Resource]:
+        templates = Path("templates")
+        templates = (templates / "scheduler.yaml", *(templates / "crd" / CRD_BASE).glob("*.yaml"))
+        context = {
+            "Values": self._config,
+            "Release": {"Name": "volcano", "Namespace": self.namespace},
+        }
+        env = Environment(loader=FileSystemLoader("/"))
+        for _ in templates:
+            rendered = env.get_template(str(_.resolve())).render(context)
+            for obj in codecs.load_all_yaml(rendered):
+                yield obj
 
     @property
-    def crds(self):
-        return Path("templates", "crd", self.base).glob("*.yaml")
+    def _sorted_resources(self) -> List[Resource]:
+        return sorted(self._resources, key=lambda r: r.metadata.name)
 
-    def apply_manifests(self):
-        for crd in self.crds:
-            text = crd.read_text()
-            for obj in codecs.load_all_yaml(text):
-                self.delete_resource(
-                    type(obj),
-                    obj.metadata.name,
-                    namespace=obj.metadata.namespace,
-                    ignore_not_found=True,
-                )
-                self.client.create(obj)
+    @property
+    def _config(self) -> dict:
+        return dict(
+            basic=dict(image_tag_version="v1.7.0", image_pull_secret="", admission_port=8443),
+            custom=dict(
+                metrics_enable=False,
+                admission_enable=True,
+                controller_enable=True,
+                scheduler_enable=True,
+                enabled_admissions="/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate",
+            ),
+            juju=dict(admission=True, controller=True, scheduler=True),
+        )
 
-    def delete_manifest(self, namespace=None, ignore_not_found=False, ignore_unauthorized=False):
-        for crd in self.crds:
-            text = crd.read_text()
-            for obj in codecs.load_all_yaml(text):
-                self.delete_resource(
-                    type(obj),
-                    obj.metadata.name,
-                    namespace=obj.namespace,
-                    ignore_not_found=ignore_not_found,
-                    ignore_unauthorized=ignore_unauthorized,
-                )
-
-    def delete_resource(
+    def _delete_resource(
         self,
         resource_type,
         name,
@@ -76,3 +84,23 @@ class Manifests:
             else:
                 log.exception("ApiError encountered while attempting to delete resource.")
                 raise
+        else:
+            rtype = resource_type._api_info.resource.kind
+            log.info(f"Deleted {rtype}({name}, namespace={namespace})")
+
+
+    def apply(self):
+        """Apply all manifests managed by this charm."""
+        for obj in self._sorted_resources:
+            self.client.apply(obj)
+
+    def delete_manifest(self, ignore_not_found=False, ignore_unauthorized=False):
+        """Delete all manifests managed by this charm."""
+        for obj in self._sorted_resources:
+            self._delete_resource(
+                type(obj),
+                obj.metadata.name,
+                namespace=obj.metadata.namespace,
+                ignore_not_found=ignore_not_found,
+                ignore_unauthorized=ignore_unauthorized,
+            )

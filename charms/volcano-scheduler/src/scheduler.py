@@ -1,5 +1,4 @@
 import logging
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Tuple, TypedDict
@@ -28,18 +27,6 @@ class SchedulerConfig(TypedDict):
         return DEFAULT_CONFIG
 
 
-@dataclass
-class SchedulerArgs:
-    enable_healthz: str = "true"
-    enable_metrics: str = "false"
-    loglevel: int = 3
-    extra_args: dict = field(default_factory=dict)
-
-    @classmethod
-    def load(cls, charm):
-        return cls()
-
-
 DEFAULT_CONFIG = SchedulerConfig(
     actions="enqueue, allocate, backfill",
     tiers=[
@@ -65,6 +52,18 @@ DEFAULT_CONFIG = SchedulerConfig(
 
 
 @dataclass
+class SchedulerArgs:
+    enable_healthz: str = "true"
+    enable_metrics: str = "false"
+    loglevel: int = 3
+    extra_args: dict = field(default_factory=dict)
+
+    @classmethod
+    def load(cls, charm):
+        return cls()
+
+
+@dataclass
 class Scheduler:
     config: SchedulerConfig = None
     command: str = ""
@@ -79,7 +78,9 @@ class Scheduler:
         extra_args = args.extra_args
         extra = ""
         if extra_args:
-            extra = " " + " ".join(sorted(f"--{key}='{value}'" for key, value in extra_args))
+            extra = " " + " ".join(
+                sorted(f"--{key}='{value}'" for key, value in extra_args.items())
+            )
 
         self.command = (
             f"{self.binary} {logredirect} {conf} {healthz} {metrics} {loglevel}{extra} 2>&1"
@@ -91,9 +92,12 @@ class Scheduler:
         self.config = config
         return self
 
-    def authorize(self, container):
+    def restart(self, container):
+        root_owned = dict(permissions=0o600, user_id=0, group_id=0)
         container.add_layer(container.name, self.layer, combine=True)
-        container.push(*self.config_file, make_dirs=True, **self.root_owned)
+        container.push(*self.config_file, make_dirs=True, **root_owned)
+        container.autostart()
+        container.restart(container.name)
 
     @property
     def layer(self):
@@ -114,10 +118,6 @@ class Scheduler:
     @property
     def binary(self):
         return Path("/", "vc-scheduler")
-
-    @property
-    def root_owned(self):
-        return dict(permissions=0o600, user_id=0, group_id=0)
 
     @property
     def config_file(self) -> Tuple[str, str]:

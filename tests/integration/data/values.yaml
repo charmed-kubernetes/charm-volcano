@@ -12,5 +12,9 @@ custom:
   metrics_enable: false
   admission_enable: true
   controller_enable: true
-  scheduler_enable: true
+  scheduler_enable: false
   enabled_admissions: "/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate"
+juju:
+  admission: true
+  controller: true
+  scheduler: true

@@ -1,4 +1,5 @@
 {% if Values.custom.scheduler_enable -%}
+{% if not Values.juju.scheduler -%}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,6 +14,7 @@ metadata:
   name: {{ Release.Name }}-scheduler
   namespace: {{ Release.Namespace }}
 ---
+{% endif -%}
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -92,7 +94,7 @@ roleRef:
   kind: ClusterRole
   name: {{ Release.Name }}-scheduler
   apiGroup: rbac.authorization.k8s.io
-
+{% if not Values.juju.scheduler -%}
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -136,6 +138,7 @@ spec:
         - name: scheduler-config
           configMap:
             name: {{ Release.Name }}-scheduler-configmap
+{% endif -%}
 ---
 apiVersion: v1
 kind: Service
