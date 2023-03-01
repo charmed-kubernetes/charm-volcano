@@ -14,6 +14,7 @@ from typing import Sequence
 
 import pytest
 from lightkube import codecs
+from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.resources.apps_v1 import Deployment, StatefulSet
 from lightkube.resources.core_v1 import Pod
 from pytest_operator.plugin import OpsTest
@@ -85,6 +86,7 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
 async def test_scheduler(ops_test: OpsTest, kubernetes):
     """Test the volcano scheduler can accept new queues, a new VCJob, and a TFJob."""
     basedir = Path(".") / "tests" / "integration" / "data" / "volcano"
+    load_in_cluster_generic_resources(kubernetes)
     sched_status_re = re.compile(
         r"There are <(\d+)> Jobs, <(\d+)> Queues and <\d+> Nodes"
     )
