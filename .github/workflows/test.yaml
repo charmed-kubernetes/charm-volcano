@@ -54,7 +54,7 @@ jobs:
       - build-dependencies
     strategy:
       matrix:
-        microk8s: ["1.24/stable"]
+        microk8s: ["1.25-strict/stable"]
         juju: ["2.9/stable", "3.0/stable"]
     steps:
     - name: Check out code
@@ -76,7 +76,7 @@ jobs:
       run: lxc --project charmcraft project create local:charmcraft
 
     - name: Run test
-      run: sg microk8s -c "tox -e integration"
+      run: sg snap_microk8s -c "tox -e integration"
 
     - name: Setup Debug Artifact Collection
       if: ${{ failure() }}
