@@ -60,20 +60,13 @@ class Charm:
         resources = self.metadata.get("resources") or {}
 
         return {
-            name: self._craft_oci_resource(name, resource)
+            name: self._craft_resource(name, resource)
             for name, resource in resources.items()
-            if resource.get("type") == "oci-image"
         }
 
-    def _craft_oci_resource(self, name: str, resource: dict):
-        oci_image = resource.get("upstream-source")
-        if not oci_image:
-            return None
-        image_file = self.ops_test.tmp_path / "resources" / name
-        image_file.parent.mkdir(exist_ok=True)
-        with image_file.open("w") as f:
-            f.write(f'{{"ImageName": "{oci_image}"}}')
-        return image_file
+    def _craft_resource(self, name: str, resource: dict):
+        if oci_image := resource.get("upstream-source"):
+            return oci_image
 
     async def resolve(self) -> Path:
         """Build the charm with ops_test."""
@@ -132,6 +125,7 @@ async def volcano_system(request, ops_test):
             resources=charm.resources,
             application_name=charm.app_name,
             series="jammy",
+            trust="scheduler" in charm.app_name,
         )
         for path, charm in zip(charm_files, charms)
     ]

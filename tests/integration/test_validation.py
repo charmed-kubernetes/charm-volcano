@@ -14,7 +14,7 @@ from typing import Sequence
 
 import pytest
 from lightkube import codecs
-from lightkube.resources.apps_v1 import Deployment
+from lightkube.resources.apps_v1 import Deployment, StatefulSet
 from lightkube.resources.core_v1 import Pod
 from pytest_operator.plugin import OpsTest
 
@@ -32,12 +32,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
     """
 
 
-def check_deployments_ready(kubernetes, unready, timeout=5 * 60, **kw):
-    """Loop until deployments are ready or raise timeout."""
+def check_if_ready(kubernetes, resource_type, unready, timeout=5 * 60, **kw):
+    """Loop until resources are ready or raise timeout."""
     starting = datetime.datetime.now()
     ending = starting + datetime.timedelta(seconds=timeout)
     while datetime.datetime.now() < ending:
-        for dep in kubernetes.list(Deployment, **kw):
+        for dep in kubernetes.list(resource_type, **kw):
             if dep.status.readyReplicas == 1:
                 unready.discard(dep.metadata.name)
         if not unready:
@@ -69,10 +69,14 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
         )
         for r in codecs.load_all_yaml(t)
     ]
-    assert check_deployments_ready(
+    assert check_if_ready(
         kubernetes,
-        {"volcano-admission", "volcano-scheduler", "volcano-controllers"},
+        Deployment,
+        {"volcano-admission", "volcano-controllers"},
         namespace="volcano-system",
+    )
+    assert check_if_ready(
+        kubernetes, StatefulSet, {"volcano-scheduler"}, namespace="volcano-system"
     )
 
 
