@@ -128,7 +128,7 @@ class Scheduler:
         if not self.executable(container):
             logger.warning("Cannot fetch version without executable")
             return "Unknown"
-        process = container.exec([self.binary, "--version"])
+        process = container.exec([str(self.binary), "--version"])
         try:
             version_str, error = process.wait_output()
         except ExecError as e:
