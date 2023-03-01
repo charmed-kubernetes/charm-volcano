@@ -37,7 +37,7 @@ jobs:
     - name: Pack Charms
       run: |
         charmcraft pack -p charms/volcano-admission
-        charmcraft pack -p charms/volcano-controller-manager
+        charmcraft pack -p charms/volcano-controller
         charmcraft pack -p charms/volcano-scheduler
 
     - name: Upload charm artifacts
