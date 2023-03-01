@@ -61,9 +61,7 @@ class CharmVolcano(CharmBase):
             self.unit.status = WaitingStatus("Container Not Ready")
             return
 
-        path, file = scheduler.binary.parent, scheduler.binary.name
-        executable = container.list_files(path, pattern=file + "*")
-        if not executable:
+        if not scheduler.executable(container):
             self.unit.status = BlockedStatus(f"Image missing executable: {scheduler.binary}")
             return
 
@@ -75,8 +73,15 @@ class CharmVolcano(CharmBase):
         self.unit.status = ActiveStatus()
 
     def _set_version(self, _event=None):
-        if self.unit.is_leader():
-            self.unit.set_workload_version("v1.7.0")
+        if not self.unit.is_leader():
+            return
+
+        container = self.model.unit.get_container(self.CONTAINER)
+        if not container or not container.can_connect():
+            return
+
+        version = Scheduler().version(container)
+        self.unit.set_workload_version(version)
 
     def _cleanup(self, _):
         cont = self.model.unit.get_container(self.CONTAINER)

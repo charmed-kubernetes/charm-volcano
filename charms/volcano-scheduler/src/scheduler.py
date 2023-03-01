@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import List, Tuple, TypedDict
 
 import yaml
+from ops.model import Container
+from ops.pebble import ExecError
 
 logger = logging.getLogger(__name__)
 CONFIG_FILE = Path("/", "volcano.scheduler", "volcano-scheduler.yaml")
@@ -115,6 +117,30 @@ class Scheduler:
         container.autostart()
         container.restart(container.name)
 
+    def executable(self, container) -> bool:
+        """Check if container has the appropriate executable."""
+        path, file = self.binary.parent, self.binary.name
+        files = container.list_files(path, pattern=file + "*")
+        return bool(files)
+
+    def version(self, container: Container) -> str:
+        """Get version from the container."""
+        if not self.executable(container):
+            logger.warning("Cannot fetch version without executable")
+            return "Unknown"
+        process = container.exec([self.binary, "--version"])
+        try:
+            version_str, error = process.wait_output()
+        except ExecError as e:
+            logger.error(f"Failed to get version: {e}")
+            return "Unknown"
+        for line in version_str.splitlines():
+            if line.startswith("Version:"):
+                _, r = line.split(":", 1)
+                return r.strip()
+        logger.error(f"Failed to parse version: \n{version_str}")
+        return "Unknown"
+
     @property
     def _layer(self):
         logger.info("starting volcano binary with command %s", self.command)
@@ -127,7 +153,7 @@ class Scheduler:
                     "summary": "volcano",
                     "command": self.command,
                     "startup": "enabled",
-                }
+                },
             },
         }
 
