@@ -16,7 +16,8 @@ import logging
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.pebble import ConnectionError
 
 from config import ConfigError
 from manifests import Manifests
@@ -35,7 +36,6 @@ class CharmVolcano(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.framework.observe(self.on.install, self._install_or_upgrade)
         self.framework.observe(self.on.upgrade_charm, self._install_or_upgrade)
         self.framework.observe(self.on.volcano_pebble_ready, self._install_or_upgrade)
         self.framework.observe(self.on.update_status, self._update_status)
@@ -43,9 +43,13 @@ class CharmVolcano(CharmBase):
         self.framework.observe(self.on.stop, self._cleanup)
 
     def _update_status(self, _event):
-        pass
+        container = self.model.unit.get_container(self.CONTAINER)
+        if not container or not container.can_connect():
+            self.unit.status = WaitingStatus("Scheduler Not Ready")
+        else:
+            self.unit.status = ActiveStatus()
 
-    def _install_or_upgrade(self, _event):
+    def _install_or_upgrade(self, event):
         scheduler = Scheduler()
 
         try:
@@ -58,7 +62,7 @@ class CharmVolcano(CharmBase):
 
         container = self.model.unit.get_container(self.CONTAINER)
         if not container or not container.can_connect():
-            self.unit.status = WaitingStatus("Container Not Ready")
+            self.unit.status = WaitingStatus("Scheduler Not Ready")
             return
 
         if not scheduler.executable(container):
@@ -69,8 +73,14 @@ class CharmVolcano(CharmBase):
         if self.unit.is_leader():
             manifests.apply()
 
-        scheduler.restart(container)
-        self.unit.status = ActiveStatus()
+        try:
+            scheduler.restart(container)
+        except ConnectionError:
+            self.unit.status = WaitingStatus("Failed to connect to scheduler")
+            event.defer()
+            return
+
+        self.unit.status = MaintenanceStatus("Waiting for scheduler to start")
 
     def _set_version(self, _event=None):
         if not self.unit.is_leader():
