@@ -9,6 +9,7 @@ from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import Resource
 from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.resources.apps_v1 import StatefulSet
 
 log = logging.getLogger(__name__)
 CRD_BASE = "v1"  # assumes we're in a k8s cluster that has access to v1 CRDs
@@ -20,7 +21,7 @@ class Manifests:
     def __init__(self, charm):
         self._charm = charm
         self.namespace = charm.model.name
-        self.application = charm.model.app.name
+        self.application = charm.app.name
         self.client = Client(namespace=self.namespace, field_manager=self.application)
         load_in_cluster_generic_resources(self.client)
 
@@ -39,8 +40,27 @@ class Manifests:
                 yield obj
 
     @property
+    def _patches(self) -> Sequence[dict]:
+        patches = []
+        # - Adjust the charm's priorityClassname
+        patch = {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}}
+        patches.append(
+            dict(
+                res=StatefulSet,
+                name=self.application,
+                namespace=self.namespace,
+                obj=patch,
+            )
+        )
+        return patches
+
+    @property
     def _sorted_resources(self) -> List[Resource]:
         return sorted(self._resources, key=lambda r: r.metadata.name)
+
+    @property
+    def _sorted_patches(self) -> List[dict]:
+        return sorted(self._patches, key=lambda r: r["name"])
 
     @property
     def _config(self) -> dict:
@@ -92,6 +112,8 @@ class Manifests:
         """Apply all manifests managed by this charm."""
         for obj in self._sorted_resources:
             self.client.apply(obj)
+        for patch in self._sorted_patches:
+            self.client.patch(**patch)
 
     def delete_manifest(self, ignore_not_found=False, ignore_unauthorized=False):
         """Delete all manifests managed by this charm."""

@@ -3,6 +3,7 @@ import unittest.mock as mock
 import pytest
 from lightkube.core.exceptions import ApiError
 from lightkube.core.internal_resources import apiextensions
+from lightkube.resources.apps_v1 import StatefulSet
 
 from manifests import Manifests
 
@@ -39,6 +40,16 @@ def test_apply(lightkube_client, manifests):
         "commands.bus.volcano.sh",
     )
     assert (last.kind, last.metadata.name) == ("Service", "volcano-scheduler-service")
+
+    calls = lightkube_client.patch.call_args_list
+    assert len(calls) == 1
+    first = calls[0].kwargs
+    assert tuple(first[_] for _ in ["res", "name", "namespace", "obj"]) == (
+        StatefulSet,
+        manifests.application,
+        manifests.namespace,
+        {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}},
+    )
 
 
 def test_successful_delete_resources(manifests, caplog):
