@@ -19,9 +19,9 @@ from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.pebble import ConnectionError
 
-from config import ConfigError
+from config import ConfigError, SchedulerArgs, SchedulerConfig
 from manifests import Manifests
-from scheduler import Scheduler, SchedulerArgs, SchedulerConfig
+from scheduler import Scheduler
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)

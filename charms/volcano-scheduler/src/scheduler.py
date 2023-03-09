@@ -1,80 +1,18 @@
 """Establish handler for the sidecar container."""
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple, TypedDict
+from typing import Tuple
 
 import yaml
 from ops.model import Container
 from ops.pebble import ExecError
 
+from config import SchedulerArgs, SchedulerConfig
+
 logger = logging.getLogger(__name__)
 CONFIG_FILE = Path("/", "volcano.scheduler", "volcano-scheduler.yaml")
-
-
-class SchedulerPlugin(TypedDict):
-    """Model config for the Scheduler plugin."""
-
-    name: str
-    enablePreemptable: bool = True  # noqa: N815
-
-
-class SchedulerPlugins(TypedDict):
-    """Model config for the Scheduler plugin list."""
-
-    plugins: List[SchedulerPlugin]
-
-
-class SchedulerConfig(TypedDict):
-    """Model config for the Scheduler."""
-
-    actions: str
-    tiers: List[SchedulerPlugins]
-
-    @classmethod
-    def load(cls, charm):
-        """Load scheduler config from charm config and relations."""
-        return DEFAULT_CONFIG
-
-
-DEFAULT_CONFIG = SchedulerConfig(
-    actions="enqueue, allocate, backfill",
-    tiers=[
-        SchedulerPlugins(
-            plugins=[
-                SchedulerPlugin(name="priority"),
-                SchedulerPlugin(name="gang", enablePreemptable=False),
-                SchedulerPlugin(name="conformance"),
-            ]
-        ),
-        SchedulerPlugins(
-            plugins=[
-                SchedulerPlugin(name="overcommit"),
-                SchedulerPlugin(name="drf", enablePreemptable=False),
-                SchedulerPlugin(name="predicates"),
-                SchedulerPlugin(name="proportion"),
-                SchedulerPlugin(name="nodeorder"),
-                SchedulerPlugin(name="binpack"),
-            ]
-        ),
-    ],
-)
-
-
-@dataclass
-class SchedulerArgs:
-    """Model command line arguments for the scheduler."""
-
-    enable_healthz: str = "true"
-    enable_metrics: str = "false"
-    loglevel: int = 3
-    extra_args: dict = field(default_factory=dict)
-
-    @classmethod
-    def load(cls, charm):
-        """Load scheduler args from charm config and relations."""
-        return cls()
 
 
 @dataclass
@@ -165,4 +103,4 @@ class Scheduler:
     @property
     def config_file(self) -> Tuple[str, str]:
         """Generate scheduler conf file."""
-        return str(CONFIG_FILE), yaml.safe_dump(self.config)
+        return str(CONFIG_FILE), yaml.safe_dump(self.config and self.config.asdict())
