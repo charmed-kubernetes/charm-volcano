@@ -3,12 +3,12 @@
 
 # The charm package name, no spaces (required)
 # See https://juju.is/docs/sdk/naming#heading--naming-charms for guidance.
-name: volcano-controller
+name: volcano-controllers
  
 # The following metadata are human-readable and will be published prominently on Charmhub.
 
 # (Recommended)
-display-name: Volcano Controller
+display-name: Volcano Controllers
 
 # (Required)
 summary: A Cloud Native Batch System

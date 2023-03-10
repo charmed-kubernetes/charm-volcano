@@ -56,7 +56,7 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
 
     templates = [
         "volcano-admission/templates/admission.yaml",
-        "volcano-controller/templates/controllers.yaml",
+        "volcano-controllers/templates/controllers.yaml",
         "volcano-admission/templates/webhooks.yaml",
     ]
     _ = [

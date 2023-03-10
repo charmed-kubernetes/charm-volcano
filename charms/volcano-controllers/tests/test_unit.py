@@ -9,7 +9,7 @@ from charm import CharmVolcano
 
 
 class TestCharm(unittest.TestCase):
-    """MetalLB Controller Charm Unit Tests."""
+    """Volcano Controllers Charm Unit Tests."""
 
     def setUp(self):
         """Test setup."""

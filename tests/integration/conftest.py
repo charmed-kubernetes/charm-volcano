@@ -116,7 +116,7 @@ async def deploy_model(request, ops_test, model_name, *deploy_args: CharmDeploym
 async def volcano_system(request, ops_test):
     """Deploy local volcano-system charms."""
     model = "volcano-system"
-    charm_names = ("admission", "controller", "scheduler")
+    charm_names = ("admission", "controllers", "scheduler")
     charms = [Charm(ops_test, Path("charms") / f"volcano-{_}") for _ in charm_names]
     charm_files = await asyncio.gather(*[charm.resolve() for charm in charms])
     deployments = [
