@@ -41,7 +41,7 @@ def test_apply(lightkube_client, manifests):
     )
     assert (last.kind, last.metadata.name) == (
         "CustomResourceDefinition",
-        "queues.scheduling.volcano.sh"
+        "queues.scheduling.volcano.sh",
     )
 
     calls = lightkube_client.patch.call_args_list
@@ -60,10 +60,7 @@ def test_successful_delete_resources(manifests, caplog):
     _, _, first = caplog.record_tuples[0]
     _, _, last = caplog.record_tuples[-1]
     assert first == "Deleted CustomResourceDefinition(commands.bus.volcano.sh, namespace=None)"
-    assert (
-        last
-        == "Deleted CustomResourceDefinition(queues.scheduling.volcano.sh, namespace=None)"
-    )
+    assert last == "Deleted CustomResourceDefinition(queues.scheduling.volcano.sh, namespace=None)"
 
 
 def test_unfound_delete_resources(lightkube_client, manifests, caplog):
