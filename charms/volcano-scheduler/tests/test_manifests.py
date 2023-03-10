@@ -23,23 +23,26 @@ def test_resources(harness, manifests):
     itr = manifests._sorted_resources
     first, *mid, last = itr
     assert first.metadata.name == "commands.bus.volcano.sh"
-    assert first.metadata.namespace is None
+    assert first.spec.group == "bus.volcano.sh"
 
-    assert last.metadata.name == "volcano-scheduler-service"
-    assert last.metadata.namespace == harness.charm.model.name
+    assert last.metadata.name == "queues.scheduling.volcano.sh"
+    assert last.spec.group == "scheduling.volcano.sh"
 
 
 def test_apply(lightkube_client, manifests):
     manifests.apply()
     calls = lightkube_client.apply.call_args_list
-    assert len(calls) == 8
+    assert len(calls) == 5
     (first,) = calls[0].args
     (last,) = calls[-1].args
     assert (first.kind, first.metadata.name) == (
         "CustomResourceDefinition",
         "commands.bus.volcano.sh",
     )
-    assert (last.kind, last.metadata.name) == ("Service", "volcano-scheduler-service")
+    assert (last.kind, last.metadata.name) == (
+        "CustomResourceDefinition",
+        "queues.scheduling.volcano.sh"
+    )
 
     calls = lightkube_client.patch.call_args_list
     assert len(calls) == 1
@@ -59,7 +62,7 @@ def test_successful_delete_resources(manifests, caplog):
     assert first == "Deleted CustomResourceDefinition(commands.bus.volcano.sh, namespace=None)"
     assert (
         last
-        == "Deleted Service(volcano-scheduler-service, namespace=test_successful_delete_resources)"
+        == "Deleted CustomResourceDefinition(queues.scheduling.volcano.sh, namespace=None)"
     )
 
 

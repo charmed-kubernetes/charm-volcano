@@ -55,7 +55,7 @@ jobs:
     strategy:
       matrix:
         microk8s: ["1.25-strict/stable"]
-        juju: ["2.9/stable", "3.0/stable"]
+        juju: ["3.1/stable"]
     steps:
     - name: Check out code
       uses: actions/checkout@v3

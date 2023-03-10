@@ -30,3 +30,11 @@ resources:
     type: oci-image
     description: OCI Image for volcano-scheduler.
     upstream-source: rocks.canonical.com/cdk/volcanosh/vc-scheduler:v1.7.0
+
+peers:
+  volcano:
+    interface: volcano-scheduler
+
+assumes:
+  - juju >= 3.1
+  - k8s-api
