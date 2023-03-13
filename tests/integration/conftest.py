@@ -40,6 +40,7 @@ class CharmDeployment:
 class Charm:
     """Represents source charms."""
 
+    ops_test: OpsTest
     path: Path
     _charmfile: Path = None
 
@@ -56,9 +57,18 @@ class Charm:
     @property
     def resources(self) -> dict:
         """Charm resources."""
-        return {}
+        resources = self.metadata.get("resources") or {}
 
-    async def resolve(self, ops_test: OpsTest) -> Path:
+        return {
+            name: self._craft_resource(name, resource)
+            for name, resource in resources.items()
+        }
+
+    def _craft_resource(self, name: str, resource: dict):
+        if oci_image := resource.get("upstream-source"):
+            return oci_image
+
+    async def resolve(self) -> Path:
         """Build the charm with ops_test."""
         if self._charmfile is None:
             try:
@@ -68,7 +78,7 @@ class Charm:
                 )
                 self._charmfile, *_ = filter(None, potentials)
             except ValueError:
-                self._charmfile = await ops_test.build_charm(self.path)
+                self._charmfile = await self.ops_test.build_charm(self.path)
         return self._charmfile.resolve()
 
 
@@ -106,15 +116,16 @@ async def deploy_model(request, ops_test, model_name, *deploy_args: CharmDeploym
 async def volcano_system(request, ops_test):
     """Deploy local volcano-system charms."""
     model = "volcano-system"
-    charm_names = ("admission", "controller-manager", "scheduler")
-    charms = [Charm(Path("charms") / f"volcano-{_}") for _ in charm_names]
-    charm_files = await asyncio.gather(*[charm.resolve(ops_test) for charm in charms])
+    charm_names = ("admission", "controllers", "scheduler")
+    charms = [Charm(ops_test, Path("charms") / f"volcano-{_}") for _ in charm_names]
+    charm_files = await asyncio.gather(*[charm.resolve() for charm in charms])
     deployments = [
         CharmDeployment(
             str(path),
             resources=charm.resources,
             application_name=charm.app_name,
             series="jammy",
+            trust="scheduler" in charm.app_name,
         )
         for path, charm in zip(charm_files, charms)
     ]

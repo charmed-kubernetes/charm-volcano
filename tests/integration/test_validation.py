@@ -14,7 +14,8 @@ from typing import Sequence
 
 import pytest
 from lightkube import codecs
-from lightkube.resources.apps_v1 import Deployment
+from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.resources.apps_v1 import Deployment, StatefulSet
 from lightkube.resources.core_v1 import Pod
 from pytest_operator.plugin import OpsTest
 
@@ -32,12 +33,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
     """
 
 
-def check_deployments_ready(kubernetes, unready, timeout=5 * 60, **kw):
-    """Loop until deployments are ready or raise timeout."""
+def check_if_ready(kubernetes, resource_type, unready, timeout=5 * 60, **kw):
+    """Loop until resources are ready or raise timeout."""
     starting = datetime.datetime.now()
     ending = starting + datetime.timedelta(seconds=timeout)
     while datetime.datetime.now() < ending:
-        for dep in kubernetes.list(Deployment, **kw):
+        for dep in kubernetes.list(resource_type, **kw):
             if dep.status.readyReplicas == 1:
                 unready.discard(dep.metadata.name)
         if not unready:
@@ -55,13 +56,7 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
 
     templates = [
         "volcano-admission/templates/admission.yaml",
-        "volcano-scheduler/templates/crd/v1/batch.volcano.sh_jobs.yaml",
-        "volcano-scheduler/templates/crd/v1/bus.volcano.sh_commands.yaml",
-        "volcano-controller-manager/templates/controllers.yaml",
-        "volcano-scheduler/templates/scheduler.yaml",
-        "volcano-scheduler/templates/crd/v1/scheduling.volcano.sh_podgroups.yaml",
-        "volcano-scheduler/templates/crd/v1/scheduling.volcano.sh_queues.yaml",
-        "volcano-scheduler/templates/crd/v1/nodeinfo.volcano.sh_numatopologies.yaml",
+        "volcano-controllers/templates/controllers.yaml",
         "volcano-admission/templates/webhooks.yaml",
     ]
     _ = [
@@ -75,10 +70,14 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
         )
         for r in codecs.load_all_yaml(t)
     ]
-    assert check_deployments_ready(
+    assert check_if_ready(
         kubernetes,
-        {"volcano-admission", "volcano-scheduler", "volcano-controllers"},
+        Deployment,
+        {"volcano-admission", "volcano-controllers"},
         namespace="volcano-system",
+    )
+    assert check_if_ready(
+        kubernetes, StatefulSet, {"volcano-scheduler"}, namespace="volcano-system"
     )
 
 
@@ -87,12 +86,13 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
 async def test_scheduler(ops_test: OpsTest, kubernetes):
     """Test the volcano scheduler can accept new queues, a new VCJob, and a TFJob."""
     basedir = Path(".") / "tests" / "integration" / "data" / "volcano"
+    load_in_cluster_generic_resources(kubernetes)
     sched_status_re = re.compile(
         r"There are <(\d+)> Jobs, <(\d+)> Queues and <\d+> Nodes"
     )
 
     def _parse_scheduler_logs(lines) -> Sequence[int]:
-        for line in lines:
+        for line in reversed(list(lines)):
             if m := sched_status_re.search(line):
                 return map(int, m.groups())
         return 0, 0
@@ -113,14 +113,17 @@ async def test_scheduler(ops_test: OpsTest, kubernetes):
         await asyncio.sleep(10)
         ns = "volcano-system"
         (scheduler,) = kubernetes.list(
-            Pod, namespace=ns, labels={"app": "volcano-scheduler"}
+            Pod, namespace=ns, labels={"app.kubernetes.io/name": "volcano-scheduler"}
         )
+        (container,) = [
+            c.name for c in scheduler.spec.containers if "volcano" in c.name
+        ]
         log_time = datetime.datetime.now()
         jobs, queues = _parse_scheduler_logs(
             kubernetes.log(
                 scheduler.metadata.name,
                 namespace=ns,
-                container=scheduler.spec.containers[0].name,
+                container=container,
                 since=(log_time - test_start).seconds,
             )
         )

@@ -16,7 +16,7 @@ jobs:
     needs:
       - call-inclusive-naming-check
     with:
-      python: "['3.8', '3.9', '3.10', '3.11']"
+      python: "['3.10', '3.11']"
 
   build-dependencies:
     name: Build Charms
@@ -37,7 +37,7 @@ jobs:
     - name: Pack Charms
       run: |
         charmcraft pack -p charms/volcano-admission
-        charmcraft pack -p charms/volcano-controller-manager
+        charmcraft pack -p charms/volcano-controllers
         charmcraft pack -p charms/volcano-scheduler
 
     - name: Upload charm artifacts
@@ -54,8 +54,8 @@ jobs:
       - build-dependencies
     strategy:
       matrix:
-        microk8s: ["1.24/stable"]
-        juju: ["2.9/stable", "3.0/stable"]
+        microk8s: ["1.25-strict/stable"]
+        juju: ["3.1/stable"]
     steps:
     - name: Check out code
       uses: actions/checkout@v3
@@ -74,9 +74,6 @@ jobs:
 
     - name: Prepare lxc project
       run: lxc --project charmcraft project create local:charmcraft
-
-    - name: Create volcano-system model
-      run: sg snap_microk8s -c "juju add-model volcano-system"
 
     - name: Run test
       run: sg snap_microk8s -c "tox -e integration"
