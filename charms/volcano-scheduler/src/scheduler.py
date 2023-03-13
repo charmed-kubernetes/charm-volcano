@@ -45,7 +45,6 @@ class Scheduler:
         """Update commandline for container."""
         self._build_command(charm, args)
         self.config = config
-        charm.unit.open_port("tcp", 8080)
         return self
 
     def restart(self, container):

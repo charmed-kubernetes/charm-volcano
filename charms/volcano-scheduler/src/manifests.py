@@ -4,12 +4,15 @@ import logging
 from pathlib import Path
 from typing import List, Sequence
 
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from jinja2 import Environment, FileSystemLoader
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import Resource
 from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.apps_v1 import StatefulSet
+from ops.model import ModelError
 
 log = logging.getLogger(__name__)
 CRD_BASE = "v1"  # assumes we're in a k8s cluster that has access to v1 CRDs
@@ -24,6 +27,9 @@ class Manifests:
         self.application = charm.app.name
         self.client = Client(namespace=self.namespace, field_manager=self.application)
         load_in_cluster_generic_resources(self.client)
+
+        self.service_port = ServicePort(8080, name=self.application, protocol="TCP")
+        self.service_patcher = KubernetesServicePatch(charm, [self.service_port])
 
     @property
     def _resources(self) -> Sequence[Resource]:
@@ -114,6 +120,17 @@ class Manifests:
             self.client.apply(obj)
         for patch in self._sorted_patches:
             self.client.patch(**patch)
+        self._patch_service()
+
+    def _patch_service(self):
+        # Try to patch the service with juju 3.1 open_port
+        # if this fails, try to use the K8S_Service_Patcher lib
+        if not self.service_patcher.is_patched():
+            try:
+                args = self.service_port.protocol.lower(), self.service_port.port
+                self._charm.unit.open_port(*args)
+            except ModelError:
+                self.service_patcher._patch()
 
     def delete_manifest(self, ignore_not_found=False, ignore_unauthorized=False):
         """Delete all manifests managed by this charm."""
