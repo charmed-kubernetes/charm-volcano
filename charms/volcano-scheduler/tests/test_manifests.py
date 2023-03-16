@@ -4,13 +4,22 @@ import pytest
 from lightkube.core.exceptions import ApiError
 from lightkube.core.internal_resources import apiextensions
 from lightkube.resources.apps_v1 import StatefulSet
+from ops.model import ModelError
 
 from manifests import Manifests
 
 
-@pytest.fixture
-def manifests(harness):
-    return Manifests(harness.charm)
+@pytest.fixture()
+def ksp(request):
+    # Run tests using KubernetesServicePatch patching
+    with mock.patch("manifests.KubernetesServicePatch") as ksp:
+        ksp.return_value.is_patched.return_value = False
+        yield ksp.return_value
+
+
+@pytest.fixture()
+def manifests(ksp, harness):
+    yield Manifests(harness.charm)
 
 
 def test_constructor(harness, manifests, lightkube_client):
@@ -29,8 +38,18 @@ def test_resources(harness, manifests):
     assert last.spec.group == "scheduling.volcano.sh"
 
 
-def test_apply(lightkube_client, manifests):
-    manifests.apply()
+@pytest.mark.parametrize(
+    "open_port", [True, False], ids=["open_port=enabled", "open_port=disabled"]
+)
+def test_apply(lightkube_client, manifests, ksp, open_port):
+    def open_port_se(*_args):
+        if not open_port:
+            raise ModelError()
+
+    with mock.patch.object(
+        manifests._charm.unit, "open_port", side_effect=open_port_se
+    ) as mock_open_port:
+        manifests.apply()
     calls = lightkube_client.apply.call_args_list
     assert len(calls) == 5
     (first,) = calls[0].args
@@ -53,6 +72,10 @@ def test_apply(lightkube_client, manifests):
         manifests.namespace,
         {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}},
     )
+
+    mock_open_port.assert_called_once_with("tcp", 8080)
+    if not open_port:
+        ksp._patch.assert_called_once_with()
 
 
 def test_successful_delete_resources(manifests, caplog):
