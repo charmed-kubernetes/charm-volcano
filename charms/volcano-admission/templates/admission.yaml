@@ -1,5 +1,6 @@
 # from volcano/templates/admission.yaml
 {% if Values.custom.admission_enable -%}
+{% if not Values.juju.admission -%}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -158,4 +159,5 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["./gen-admission-secret.sh", "--service", "{{ Release.Name }}-admission-service", "--namespace",
                     "{{ Release.Namespace }}", "--secret", "{{Values.basic.admission_secret_name}}"]
+{% endif -%}
 {% endif %}

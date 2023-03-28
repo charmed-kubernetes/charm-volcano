@@ -21,3 +21,12 @@ description: |
   These types of applications typically run on generalized domain frameworks 
   like TensorFlow, Spark, Ray, PyTorch, MPI, etc, which Volcano integrates with.
 
+containers:
+  volcano:
+    resource: volcano-controller-image
+
+resources:
+  volcano-controller-image:
+    type: oci-image
+    description: OCI Image for volcano-controller.
+    upstream-source: rocks.canonical.com/cdk/volcanosh/vc-controller-manager:v1.7.0

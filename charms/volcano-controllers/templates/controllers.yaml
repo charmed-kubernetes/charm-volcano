@@ -1,4 +1,5 @@
 {% if Values.custom.controller_enable -%}
+{% if not Values.juju.controller -%}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -107,4 +108,5 @@ spec:
               - -v=4
               - 2>&1
             imagePullPolicy: "IfNotPresent"
+{% endif -%}
 {% endif %}

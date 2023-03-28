@@ -21,3 +21,12 @@ description: |
   These types of applications typically run on generalized domain frameworks 
   like TensorFlow, Spark, Ray, PyTorch, MPI, etc, which Volcano integrates with.
 
+containers:
+  volcano:
+    resource: volcano-admission-image
+
+resources:
+  volcano-admission-image:
+    type: oci-image
+    description: OCI Image for volcano-admission.
+    upstream-source: rocks.canonical.com/cdk/volcanosh/vc-webhook-manager:v1.7.0
