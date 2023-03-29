@@ -1,7 +1,9 @@
 """Digest charm configuration from application and relations."""
 from dataclasses import dataclass, field
-from typing import List
 
+
+class ConfigError(Exception):
+    """Raised when charm has a configuration error."""
 
 
 @dataclass

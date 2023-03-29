@@ -4,26 +4,24 @@ import logging
 from typing import List, Sequence
 
 from lightkube import Client
-from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.resources.apps_v1 import StatefulSet
 
 log = logging.getLogger(__name__)
 
 
 class Manifests:
-    """Render manifests from charm config and apply to the cluster."""
+    """Adjust charm's resource config and apply to the cluster."""
 
     def __init__(self, charm):
         self._charm = charm
         self.namespace = charm.model.name
         self.application = charm.app.name
         self.client = Client(namespace=self.namespace, field_manager=self.application)
-        load_in_cluster_generic_resources(self.client)
 
     @property
     def _patches(self) -> Sequence[dict]:
         patches = []
-        # - Adjust the charm's priorityClassname
+        # - Adjust the charm's priorityClassname (requires charm trust)
         patch = {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}}
         patches.append(
             dict(

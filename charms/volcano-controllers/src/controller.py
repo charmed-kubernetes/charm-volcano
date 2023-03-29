@@ -3,9 +3,7 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
-import yaml
 from ops.model import Container
 from ops.pebble import ExecError
 
@@ -32,15 +30,12 @@ class Controller:
                 sorted(f"--{key}='{value}'" for key, value in extra_args.items())
             )
 
-        self.command = (
-            f"{self.binary} {logredirect} {healthz} {loglevel}{extra} 2>&1"
-        )
+        self.command = f"{self.binary} {logredirect} {healthz} {loglevel}{extra} 2>&1"
         return self
 
-    def apply(self, charm, config, args):
+    def apply(self, charm, args):
         """Update commandline for container."""
         self._build_command(charm, args)
-        self.config = config
         return self
 
     def restart(self, container):

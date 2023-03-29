@@ -19,9 +19,9 @@ from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.pebble import ConnectionError
 
-from config import ConfigError, ControllerArgs, ControllerConfig
-from manifests import Manifests
+from config import ConfigError, ControllerArgs
 from controller import Controller
+from manifests import Manifests
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -42,9 +42,6 @@ class CharmVolcano(CharmBase):
         self.framework.observe(self.on.leader_elected, self._set_version)
         self.framework.observe(self.on.stop, self._cleanup)
 
-
-if __name__ == "__main__":  # pragma: nocover
-    main(CharmVolcano)
     def _update_status(self, _event):
         container = self.model.unit.get_container(self.CONTAINER)
         if not container or not container.can_connect():
@@ -57,8 +54,7 @@ if __name__ == "__main__":  # pragma: nocover
 
         try:
             app_args = ControllerArgs.load(self)
-            app_config = ControllerConfig.load(self)
-            controller.apply(self, app_config, app_args)
+            controller.apply(self, app_args)
         except ConfigError as e:
             self.unit.status = BlockedStatus(str(e))
             return
@@ -102,6 +98,7 @@ if __name__ == "__main__":  # pragma: nocover
             cont.stop(cont.name)
 
         self.unit.status = WaitingStatus("Shutting down")
+
 
 if __name__ == "__main__":  # pragma: nocover
     main(CharmVolcano)

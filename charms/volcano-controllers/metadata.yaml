@@ -30,3 +30,6 @@ resources:
     type: oci-image
     description: OCI Image for volcano-controller.
     upstream-source: rocks.canonical.com/cdk/volcanosh/vc-controller-manager:v1.7.0
+
+assumes:
+  - k8s-api
