@@ -50,7 +50,7 @@ class AdmissionArgs:
     """Model command line arguments for the admission."""
 
     admissions: List[str] = field(
-        default_factory=lambda : [
+        default_factory=lambda: [
             "/jobs/mutate",
             "/jobs/validate",
             "/podgroups/mutate",

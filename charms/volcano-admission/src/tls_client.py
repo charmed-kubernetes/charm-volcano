@@ -4,7 +4,8 @@ from sys import stderr, stdout
 from typing import List
 
 from ops.charm import CharmBase
-from ops.pebble import Client as Container, ExecError
+from ops.pebble import Client as Container
+from ops.pebble import ExecError
 
 from requires_certificates import CertificatesRequires
 
@@ -46,7 +47,13 @@ class TLSSelfSigned(TLSClient):
     def prepare(self, container: Container):
         """Run generate script in sidecar."""
         log.info("Generating certs in sidecar.")
-        container.push(self._binary, Path("templates", self._binary[1:]).read_text(), permissions=0o755, user_id=0, group_id=0)
+        container.push(
+            self._binary,
+            Path("templates", self._binary[1:]).read_text(),
+            permissions=0o755,
+            user_id=0,
+            group_id=0,
+        )
         process = container.exec([self._binary] + self._args)
         try:
             stdout, stderr = process.wait_output()

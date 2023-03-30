@@ -1,8 +1,8 @@
 """Apply extra manifests for enabling the scheduler and its config."""
 
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import List, Sequence
 
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
@@ -42,7 +42,7 @@ class Manifests:
 
     @property
     def _resources(self) -> Sequence[Resource]:
-        templates = Path("templates/webhooks.yaml"),
+        templates = (Path("templates/webhooks.yaml"),)
         context = {
             "Values": self._config,
             "Release": {"Name": "volcano", "Namespace": self.namespace},
