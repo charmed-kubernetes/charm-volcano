@@ -55,13 +55,14 @@ class AdmissionArgs:
             "/jobs/validate",
             "/podgroups/mutate",
             "/pods/validate",
+            "/pods/mutate",
             "/queues/mutate",
             "/queues/validate",
         ]
     )
     loglevel: int = 4
     extra_args: dict = field(default_factory=dict)
-    admission_port: int = 8443
+    admission_port: int = 443
 
     @classmethod
     def load(cls, charm) -> "AdmissionArgs":

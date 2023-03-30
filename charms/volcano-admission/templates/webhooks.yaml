@@ -1,5 +1,4 @@
 {% if Values.custom.admission_enable -%}
-
 {% if Values.custom.enabled_admissions | regexMatch("/pods/mutate") -%}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
@@ -10,7 +9,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /pods/mutate
         port: 443
@@ -22,7 +21,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     reinvocationPolicy: Never
@@ -52,7 +51,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /queues/mutate
         port: 443
@@ -64,7 +63,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     reinvocationPolicy: Never
@@ -94,7 +93,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /podgroups/mutate
         port: 443
@@ -106,7 +105,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     reinvocationPolicy: Never
@@ -136,7 +135,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /jobs/mutate
         port: 443
@@ -148,7 +147,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     reinvocationPolicy: Never
@@ -178,7 +177,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /jobs/validate
         port: 443
@@ -190,7 +189,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     rules:
@@ -220,7 +219,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /pods/validate
         port: 443
@@ -232,7 +231,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     rules:
@@ -261,7 +260,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ Release.Name }}-admission-service
+        name: {{ Release.Charm }}
         namespace: {{ Release.Namespace }}
         path: /queues/validate
         port: 443
@@ -273,7 +272,7 @@ webhooks:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
-            - volcano-system
+            - {{ Release.Namespace }}
             - kube-system
     objectSelector: {}
     rules:

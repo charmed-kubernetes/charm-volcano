@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import List, Sequence
 
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from jinja2 import Environment, FileSystemLoader
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import Resource
@@ -33,16 +32,9 @@ class Manifests:
 
     @property
     def _resources(self) -> Sequence[Resource]:
-        templates = Path("templates")
-        templates = (templates / "scheduler.yaml", *(templates / "crd" / CRD_BASE).glob("*.yaml"))
-        context = {
-            "Values": self._config,
-            "Release": {"Name": "volcano", "Namespace": self.namespace},
-        }
-        env = Environment(loader=FileSystemLoader("/"))
+        templates = Path("templates", "crd", CRD_BASE).glob("*.yaml")
         for _ in templates:
-            rendered = env.get_template(str(_.resolve())).render(context)
-            for obj in codecs.load_all_yaml(rendered):
+            for obj in codecs.load_all_yaml(_.resolve().open()):
                 yield obj
 
     @property
@@ -70,17 +62,7 @@ class Manifests:
 
     @property
     def _config(self) -> dict:
-        return dict(
-            basic=dict(image_tag_version="v1.7.0", image_pull_secret="", admission_port=8443),
-            custom=dict(
-                metrics_enable=False,
-                admission_enable=True,
-                controller_enable=True,
-                scheduler_enable=True,
-                enabled_admissions="/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate",
-            ),
-            juju=dict(admission=True, controller=True, scheduler=True),
-        )
+        return dict()
 
     def _delete_resource(
         self,

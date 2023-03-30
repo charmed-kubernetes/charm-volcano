@@ -15,5 +15,4 @@ bases:
         - arm64
 parts:
   charm:
-    prime:
-      - templates/**
+    prime: []

@@ -13,6 +13,7 @@ from lightkube.core.resource import Resource
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import ModelError
+from ops.charm import CharmBase
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def _regex_match(value: str, regex: str) -> str:
 class Manifests:
     """Render manifests from charm config and apply to the cluster."""
 
-    def __init__(self, charm):
+    def __init__(self, charm: CharmBase):
         self._charm = charm
         self.namespace = charm.model.name
         self.application = charm.app.name
@@ -45,7 +46,7 @@ class Manifests:
         templates = (Path("templates/webhooks.yaml"),)
         context = {
             "Values": self._config,
-            "Release": {"Name": "volcano", "Namespace": self.namespace},
+            "Release": {"Charm": self.application, "Namespace": self.namespace},
         }
         env = Environment(loader=FileSystemLoader("/"))
         env.filters["regexMatch"] = _regex_match
@@ -80,15 +81,10 @@ class Manifests:
     @property
     def _config(self) -> dict:
         return dict(
-            basic=dict(image_tag_version="v1.7.0", image_pull_secret="", admission_port=8443),
             custom=dict(
-                metrics_enable=False,
                 admission_enable=True,
-                controller_enable=True,
-                scheduler_enable=True,
                 enabled_admissions="/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate",
             ),
-            juju=dict(admission=True, controller=True, scheduler=True),
         )
 
     def _delete_resource(
