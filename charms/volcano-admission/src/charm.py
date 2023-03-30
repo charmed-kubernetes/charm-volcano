@@ -16,6 +16,7 @@ import logging
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
+from ops.interface_tls_certificates.requires import CertificatesRequires
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.pebble import Client as Container
@@ -24,7 +25,6 @@ from ops.pebble import ConnectionError
 from admission import Admission
 from config import AdmissionArgs, AdmissionConfig, ConfigError
 from manifests import Manifests
-from requires_certificates import CertificatesRequires
 from tls_client import CertificateError, TLSClient, TLSRelation, TLSSelfSigned
 
 # Log messages can be retrieved using juju debug-log
@@ -42,7 +42,7 @@ class CharmVolcano(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.certificates = CertificatesRequires(self, expect_server_certs=True)
+        self.certificates = CertificatesRequires(self)
         self.stored.set_default(
             self_signed_cert=True,  # Assume a self-signed certificate
         )

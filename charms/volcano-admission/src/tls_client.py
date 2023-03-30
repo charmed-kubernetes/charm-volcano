@@ -1,13 +1,13 @@
+"""Various ways for the admission webhook service to request a TLS cert package."""
+
 import logging
 from pathlib import Path
-from sys import stderr, stdout
 from typing import List
 
 from ops.charm import CharmBase
+from ops.interface_tls_certificates.requires import CertificatesRequires
 from ops.pebble import Client as Container
 from ops.pebble import ExecError
-
-from requires_certificates import CertificatesRequires
 
 CERTS = Path("/admission.local.config/certificates")
 log = logging.getLogger(__name__)
@@ -18,6 +18,8 @@ class CertificateError(Exception):
 
 
 class TLSClient:
+    """Base class for retrieving tls package files."""
+
     @property
     def cert(self) -> Path:
         """Path to tls certificate."""
@@ -35,6 +37,8 @@ class TLSClient:
 
 
 class TLSSelfSigned(TLSClient):
+    """Handles generating self-signed certs package within the sidecar."""
+
     def __init__(self, charm: CharmBase) -> None:
         self._binary = "/gen-admission-certs.sh"
         self._args: List[str] = [
@@ -64,16 +68,19 @@ class TLSSelfSigned(TLSClient):
 
     @property
     def available(self):
-        # the self-signed certs can be created at any moment
+        """Always ready to generate self-signed certs."""
         return True
 
 
 class TLSRelation(TLSClient):
+    """Request certificate package via the tls-interface relation."""
+
     def __init__(self, charm: CharmBase, relation: CertificatesRequires):
         self.relation = relation
         self.charm = charm
 
     def request(self):
+        """Generate certs based on the app and model name."""
         common_name, namespace = self.charm.app.name, self.charm.model.name
         self.relation.request_server_cert(
             f"{common_name}.{namespace}",
@@ -92,5 +99,5 @@ class TLSRelation(TLSClient):
 
     @property
     def available(self):
-        # cert is available
+        """Cert is available when it appears in the certs map."""
         return f"{self.charm.app.name}.{self.charm.model.name}" in self.relation.server_certs_map

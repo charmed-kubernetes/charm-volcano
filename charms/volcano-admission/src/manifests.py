@@ -12,8 +12,8 @@ from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import Resource
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.apps_v1 import StatefulSet
-from ops.model import ModelError
 from ops.charm import CharmBase
+from ops.model import ModelError
 
 log = logging.getLogger(__name__)
 

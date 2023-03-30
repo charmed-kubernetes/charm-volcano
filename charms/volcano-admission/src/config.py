@@ -19,8 +19,8 @@ class ResourceObject(TypedDict):
 class ResourceGroup(TypedDict):
     """Model config for the Resource Group list."""
 
-    resourceGroup: str
-    schedulerName: str
+    resourceGroup: str  # noqa: N815
+    schedulerName: str  # noqa: N815
     labels: dict
     object: Optional[ResourceObject]
     tolerations: Optional[Toleration]
@@ -30,7 +30,7 @@ class ResourceGroup(TypedDict):
 class AdmissionConfig:
     """Model config for the Admission."""
 
-    resourceGroups: List[ResourceGroup]
+    resourceGroups: List[ResourceGroup]  # noqa: N815
 
     @classmethod
     def load(cls, charm) -> "AdmissionConfig":
