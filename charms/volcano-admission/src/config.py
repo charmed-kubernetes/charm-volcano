@@ -1,6 +1,7 @@
 """Digest charm configuration from application and relations."""
 from dataclasses import asdict, dataclass, field
 from typing import Any, List, Mapping, Optional, TypedDict
+
 from lightkube.models.core_v1 import Toleration
 
 
@@ -24,6 +25,7 @@ class ResourceGroup(TypedDict):
     object: Optional[ResourceObject]
     tolerations: Optional[Toleration]
 
+
 @dataclass
 class AdmissionConfig:
     """Model config for the Admission."""
@@ -42,18 +44,21 @@ class AdmissionConfig:
 
 DEFAULT_CONFIG = AdmissionConfig(resourceGroups=[])
 
+
 @dataclass
 class AdmissionArgs:
     """Model command line arguments for the admission."""
 
-    admissions: List[str] = field(default_factory=[
-        "/jobs/mutate",
-        "/jobs/validate",
-        "/podgroups/mutate",
-        "/pods/validate",
-        "/queues/mutate",
-        "/queues/validate",
-    ])
+    admissions: List[str] = field(
+        default_factory=lambda : [
+            "/jobs/mutate",
+            "/jobs/validate",
+            "/podgroups/mutate",
+            "/pods/validate",
+            "/queues/mutate",
+            "/queues/validate",
+        ]
+    )
     loglevel: int = 4
     extra_args: dict = field(default_factory=dict)
     admission_port: int = 8443

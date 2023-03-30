@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+import re
 from typing import List, Sequence
 
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
@@ -9,12 +10,23 @@ from jinja2 import Environment, FileSystemLoader
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import Resource
-from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import ModelError
 
 log = logging.getLogger(__name__)
+
+
+def _regex_match(value: str, regex: str) -> str:
+    """Implement helm `regexMatch`.
+
+    Replacement Helm to Jinja:
+
+    {{- if .Values.custom.enabled_admissions | regexMatch "/pods/mutate" }}
+    becomes
+    {% if Values.custom.enabled_admissions | regexMatch("/pods/mutate") -%}
+    """
+    return re.findall(regex, value)
 
 
 class Manifests:
@@ -25,20 +37,18 @@ class Manifests:
         self.namespace = charm.model.name
         self.application = charm.app.name
         self.client = Client(namespace=self.namespace, field_manager=self.application)
-        load_in_cluster_generic_resources(self.client)
-
         self.service_port = ServicePort(443, name=self.application, protocol="TCP")
         self.service_patcher = KubernetesServicePatch(charm, [self.service_port])
 
     @property
     def _resources(self) -> Sequence[Resource]:
-        templates = Path("templates")
-        templates = (templates / "admission.yaml", templates / "webhooks.yaml")
+        templates = Path("templates/webhooks.yaml"),
         context = {
             "Values": self._config,
             "Release": {"Name": "volcano", "Namespace": self.namespace},
         }
         env = Environment(loader=FileSystemLoader("/"))
+        env.filters["regexMatch"] = _regex_match
         for _ in templates:
             rendered = env.get_template(str(_.resolve())).render(context)
             for obj in codecs.load_all_yaml(rendered):
@@ -47,7 +57,7 @@ class Manifests:
     @property
     def _patches(self) -> Sequence[dict]:
         patches = []
-        # - Adjust the charm's priorityClassname
+        # - Adjust the charm's priorityClassname (requires charm trust)
         patch = {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}}
         patches.append(
             dict(

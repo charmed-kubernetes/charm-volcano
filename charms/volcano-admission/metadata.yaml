@@ -1,18 +1,8 @@
 # This file populates the Overview on Charmhub.
 # See https://juju.is/docs/sdk/metadata-reference for a checklist and guidance.
-
-# The charm package name, no spaces (required)
-# See https://juju.is/docs/sdk/naming#heading--naming-charms for guidance.
 name: volcano-admission
- 
-# The following metadata are human-readable and will be published prominently on Charmhub.
-
-# (Recommended)
 display-name: Volcano Admission
-
-# (Required)
 summary: A Cloud Native Batch System
-
 description: |
   Volcano is a batch system built on Kubernetes. 
   It provides a suite of mechanisms that are commonly required by many 
@@ -20,6 +10,10 @@ description: |
   bioinformatics/genomics and other "big data" applications. 
   These types of applications typically run on generalized domain frameworks 
   like TensorFlow, Spark, Ray, PyTorch, MPI, etc, which Volcano integrates with.
+
+requires:
+  certificates:
+    interface: tls-certificates
 
 containers:
   volcano:
@@ -30,3 +24,6 @@ resources:
     type: oci-image
     description: OCI Image for volcano-admission.
     upstream-source: rocks.canonical.com/cdk/volcanosh/vc-webhook-manager:v1.7.0
+
+assumes:
+  - k8s-api
