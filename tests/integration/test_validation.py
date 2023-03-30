@@ -15,11 +15,9 @@ from typing import Sequence
 import pytest
 from lightkube import codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
-from lightkube.resources.apps_v1 import Deployment, StatefulSet
+from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Pod
 from pytest_operator.plugin import OpsTest
-
-from lib.templating import render_templates
 
 logger = logging.getLogger(__name__)
 
@@ -50,34 +48,11 @@ def check_if_ready(kubernetes, resource_type, unready, timeout=5 * 60, **kw):
 @pytest.mark.usefixtures("volcano_system")
 async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
     """Test all deployments are ready after installation."""
-    workspace = Path(".")
-    basedir = workspace / "tests" / "integration" / "data"
-    charms = workspace / "charms"
-
-    templates = [
-        "volcano-admission/templates/admission.yaml",
-        "volcano-controllers/templates/controllers.yaml",
-        "volcano-admission/templates/webhooks.yaml",
-    ]
-    _ = [
-        kubernetes.apply(r, namespace="volcano-system")
-        for t in render_templates(
-            basedir,
-            *map(lambda _: charms / _, templates),
-            values=basedir / "values.yaml",
-            name="volcano",
-            namespace="volcano-system",
-        )
-        for r in codecs.load_all_yaml(t)
-    ]
     assert check_if_ready(
         kubernetes,
-        Deployment,
-        {"volcano-admission", "volcano-controllers"},
-        namespace="volcano-system",
-    )
-    assert check_if_ready(
-        kubernetes, StatefulSet, {"volcano-scheduler"}, namespace="volcano-system"
+        StatefulSet,
+        {"volcano-admission", "volcano-controllers", "volcano-scheduler"},
+        namespace=ops_test.models["main"].model_name
     )
 
 
@@ -111,7 +86,7 @@ async def test_scheduler(ops_test: OpsTest, kubernetes):
         for obj in objects:
             kubernetes.create(obj)
         await asyncio.sleep(10)
-        ns = "volcano-system"
+        ns = ops_test.models["main"].model_name
         (scheduler,) = kubernetes.list(
             Pod, namespace=ns, labels={"app.kubernetes.io/name": "volcano-scheduler"}
         )
