@@ -52,7 +52,7 @@ async def test_load_uncharmed_manifests(ops_test: OpsTest, kubernetes):
         kubernetes,
         StatefulSet,
         {"volcano-admission", "volcano-controllers", "volcano-scheduler"},
-        namespace=ops_test.models["main"].model_name
+        namespace=ops_test.models["main"].model_name,
     )
 
 
