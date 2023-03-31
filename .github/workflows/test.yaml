@@ -31,7 +31,7 @@ jobs:
       uses: charmed-kubernetes/actions-operator@main
       with:
         provider: lxd
-        lxd-channel: 5.10/stable
+        lxd-channel: 5.12/stable
         charmcraft-channel: 2.x/stable
 
     - name: Pack Charms
