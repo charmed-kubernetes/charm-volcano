@@ -1,4 +1,4 @@
-"""Apply extra manifests for enabling the scheduler and its config."""
+"""Patch the juju applications priorityClassName."""
 
 import logging
 from typing import List, Sequence
