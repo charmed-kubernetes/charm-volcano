@@ -29,7 +29,7 @@ class Admission:
         tls_cert_file = f"--tls-cert-file={self.tls.cert}"
         tls_private_key_file = f"--tls-private-key-file={self.tls.private_key}"
         ca_cert_file = f"--ca-cert-file={self.tls.ca_cert}"
-        return list(tls_cert_file, tls_private_key_file, ca_cert_file)
+        return [tls_cert_file, tls_private_key_file, ca_cert_file]
 
     def _build_command(self, charm, args: AdmissionArgs):
         enabled_admission = f"--enabled-admission={','.join(args.admissions)}"

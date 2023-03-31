@@ -1,9 +1,5 @@
-import unittest.mock as mock
-
 import pytest
-from lightkube.core.exceptions import ApiError
 from lightkube.resources.apps_v1 import StatefulSet
-from ops.model import ModelError
 
 from manifests import Manifests
 
@@ -21,11 +17,14 @@ def test_constructor(harness, manifests, lightkube_client):
 
 def test_patches(harness, manifests):
     itr = manifests._sorted_patches
-    only_patch, = itr
+    (only_patch,) = itr
     assert only_patch["res"] == StatefulSet
     assert only_patch["name"] == manifests.application
     assert only_patch["namespace"] == manifests.namespace
-    assert only_patch["obj"]["spec"]["template"]["spec"]["priorityClassName"] == "system-cluster-critical"
+    assert (
+        only_patch["obj"]["spec"]["template"]["spec"]["priorityClassName"]
+        == "system-cluster-critical"
+    )
 
 
 def test_apply(lightkube_client, manifests):
@@ -39,4 +38,3 @@ def test_apply(lightkube_client, manifests):
         manifests.namespace,
         {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}},
     )
-

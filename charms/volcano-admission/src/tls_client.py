@@ -9,7 +9,6 @@ from ops.interface_tls_certificates.requires import CertificatesRequires
 from ops.pebble import Client as Container
 from ops.pebble import ExecError
 
-CERTS = Path("/admission.local.config/certificates")
 log = logging.getLogger(__name__)
 
 
@@ -20,20 +19,31 @@ class CertificateError(Exception):
 class TLSClient:
     """Base class for retrieving tls package files."""
 
+    CERTS = Path("/admission.local.config/certificates")
+
     @property
     def cert(self) -> Path:
         """Path to tls certificate."""
-        return CERTS / "server.crt"
+        return self.CERTS / "server.crt"
 
     @property
     def private_key(self) -> Path:
         """Path to private key file."""
-        return CERTS / "server.key"
+        return self.CERTS / "server.key"
 
     @property
     def ca_cert(self) -> Path:
         """Path to ca cert file."""
-        return CERTS / "ca.crt"
+        return self.CERTS / "ca.crt"
+
+    def prepare(self, container: Container) -> None:
+        """Adjust the sidecar container to include the cert package."""
+        ...  # pragma: no cover
+
+    @property
+    def available(self) -> bool:
+        """Determine if the certificate package is ready."""
+        ...  # pragma: no cover
 
 
 class TLSSelfSigned(TLSClient):
@@ -48,12 +58,16 @@ class TLSSelfSigned(TLSClient):
             charm.model.name,
         ]
 
+    @property
+    def _content(self) -> str:
+        return Path("templates", self._binary[1:]).read_text()
+
     def prepare(self, container: Container):
         """Run generate script in sidecar."""
         log.info("Generating certs in sidecar.")
         container.push(
             self._binary,
-            Path("templates", self._binary[1:]).read_text(),
+            self._content,
             permissions=0o755,
             user_id=0,
             group_id=0,
@@ -76,28 +90,32 @@ class TLSRelation(TLSClient):
     """Request certificate package via the tls-interface relation."""
 
     def __init__(self, charm: CharmBase, relation: CertificatesRequires):
-        self.relation = relation
-        self.charm = charm
+        self._relation = relation
+        self._charm = charm
+        self._common_name = f"{self._charm.app.name}.{self._charm.model.name}"
+        self._sans = [  # list of DNS names to reach this service
+            self._charm.app.name,
+            self._common_name,
+            f"{self._common_name}.svc",
+        ]
 
     def request(self):
         """Generate certs based on the app and model name."""
-        common_name, namespace = self.charm.app.name, self.charm.model.name
-        self.relation.request_server_cert(
-            f"{common_name}.{namespace}",
-            [f"{common_name}", f"{common_name}.{namespace}", f"{common_name}.{namespace}.svc"],
+        self._relation.request_server_cert(
+            self._common_name,
+            self._sans,
         )
 
     def prepare(self, container: Container):
         """Copy server cert into the admission container."""
         log.info("Copying certs from relation into sidecar.")
-        common_name = f"{self.charm.app.name}.{self.charm.model.name}"
-        cert = self.relation.server_certs_map[common_name]
+        cert = self._relation.server_certs_map[self._common_name]
         root_rw = dict(make_dirs=True, permissions=0o644, user_id=0, group_id=0)
-        container.push(self.ca_cert, self.relation.ca, **root_rw)
+        container.push(self.ca_cert, self._relation.ca, **root_rw)
         container.push(self.cert, cert.cert, **root_rw)
         container.push(self.private_key, cert.key, **root_rw)
 
     @property
     def available(self):
         """Cert is available when it appears in the certs map."""
-        return f"{self.charm.app.name}.{self.charm.model.name}" in self.relation.server_certs_map
+        return self._common_name in self._relation.server_certs_map
