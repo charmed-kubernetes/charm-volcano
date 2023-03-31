@@ -99,10 +99,11 @@ jobs:
     - name: Collect K8s pod logs
       if: ${{ failure() }}
       run: |
-        for pod in `sudo microk8s.kubectl get pods -n volcano-system | awk '{print$1}' | grep -v NAME`; do
+        ns=$(sudo microk8s.kubectl get namespace | grep test-validation | cut -d' ' -f1)
+        for pod in `sudo microk8s.kubectl get pods -n ${ns} | awk '{print$1}' | grep -v NAME`; do
           echo "Pod logs for: $pod"
           echo "----------------------------------"
-          sudo microk8s.kubectl logs $pod -n volcano-system 2>&1 | tee tmp/pod-$pod-logs.txt
+          sudo microk8s.kubectl logs $pod -n ${ns} 2>&1 | tee tmp/pod-$pod-logs.txt
           echo
           echo
         done
