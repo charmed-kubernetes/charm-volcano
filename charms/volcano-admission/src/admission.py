@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 import yaml
 from ops.model import Container
@@ -24,17 +24,22 @@ class Admission:
     config: AdmissionConfig = None
     command: str = ""
 
-    def _build_command(self, charm, args: AdmissionArgs):
-        enabled_admission = f"--enabled-admission={','.join(args.admissions)}"
+    @property
+    def _certificate_args(self) -> List[str]:
         tls_cert_file = f"--tls-cert-file={self.tls.cert}"
         tls_private_key_file = f"--tls-private-key-file={self.tls.private_key}"
         ca_cert_file = f"--ca-cert-file={self.tls.ca_cert}"
+        return list(tls_cert_file, tls_private_key_file, ca_cert_file)
+
+    def _build_command(self, charm, args: AdmissionArgs):
+        enabled_admission = f"--enabled-admission={','.join(args.admissions)}"
         conf = f"--admission-conf={CONFIG_FILE}"
         webhook_namespace = f"--webhook-namespace={charm.model.name}"
         webhook_service_name = f"--webhook-service-name={charm.app.name}"
         logredirect = "--logtostderr"
         port = f"--port={args.admission_port}"
         loglevel = f"-v={args.loglevel}"
+        certs = " ".join(self._certificate_args)
 
         extra_args = args.extra_args
         extra = ""
@@ -43,7 +48,7 @@ class Admission:
                 sorted(f"--{key}='{value}'" for key, value in extra_args.items())
             )
 
-        self.command = f"{self.binary} {enabled_admission} {tls_cert_file} {tls_private_key_file} {ca_cert_file} {conf} {webhook_namespace} {webhook_service_name} {logredirect} {port} {loglevel}{extra} 2>&1"
+        self.command = f"{self.binary} {enabled_admission} {certs} {conf} {webhook_namespace} {webhook_service_name} {logredirect} {port} {loglevel}{extra} 2>&1"
         return self
 
     def apply(self, charm, tls, config, args):
@@ -75,9 +80,9 @@ class Admission:
         if not self.executable(container):
             logger.warning("Cannot fetch version without executable")
             return "Unknown"
-        process = container.exec([str(self.binary), "--version"])
+        process = container.exec([str(self.binary), "--version"] + self._certificate_args)
         try:
-            version_str, error = process.wait_output()
+            version_str, _ = process.wait_output()
         except ExecError as e:
             logger.error(f"Failed to get version: {e}")
             return "Unknown"
