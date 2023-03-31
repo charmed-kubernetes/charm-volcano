@@ -16,7 +16,7 @@ from pytest_operator.plugin import OpsTest
 @pytest_asyncio.fixture(scope="module")
 async def kubernetes(request):
     """Create a k8s client."""
-    config = KubeConfig.from_file(Path("~/.kube/vsphere-config"))
+    config = KubeConfig.from_file(Path("~/.kube/config"))
     client = Client(config=config, field_manager=request.node.name, trust_env=False)
     load_in_cluster_generic_resources(client)
     yield client
