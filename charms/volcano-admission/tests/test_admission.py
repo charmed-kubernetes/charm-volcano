@@ -9,11 +9,6 @@ from tls_client import TLSClient
 
 
 @pytest.fixture
-def admission():
-    return Admission()
-
-
-@pytest.fixture
 def tls() -> TLSClient:
     tls = mock.MagicMock(spec=TLSClient)
     tls.cert = "test.crt"
@@ -22,15 +17,19 @@ def tls() -> TLSClient:
     return tls
 
 
+@pytest.fixture
+def admission(tls):
+    return Admission(tls)
+
 def test_binary(admission):
     assert str(admission.binary) == "/vc-webhook-manager"
 
 
-def test_command(harness, tls, admission):
+def test_command(harness, admission):
     args = AdmissionArgs([], 1, {"extra": "args"})
     config = AdmissionConfig([])
 
-    admission.apply(harness.charm, tls, config, args)
+    admission.apply(harness.charm, config, args)
     cmd = (
         "/vc-webhook-manager --enabled-admission= "
         "--tls-cert-file=test.crt "
@@ -44,7 +43,7 @@ def test_command(harness, tls, admission):
     assert admission.command == cmd
 
 
-def test_restart(harness, tls, admission):
+def test_restart(harness, admission):
     harness.set_can_connect(CharmVolcano.CONTAINER, True)
     expected_plan = {
         "services": {
@@ -58,7 +57,6 @@ def test_restart(harness, tls, admission):
     }
     container = harness.model.unit.get_container(CharmVolcano.CONTAINER)
     admission.command = "mock_command"
-    admission.tls = tls
     admission.restart(container)
 
     # Get the plan now we've run PebbleReady
@@ -67,7 +65,7 @@ def test_restart(harness, tls, admission):
     assert expected_plan == updated_plan
 
 
-def test_version_success(harness, tls, admission):
+def test_version_success(harness, admission):
     exec_response = """\
 API Version: v1alpha1
 Version: v1.7.0
@@ -81,7 +79,6 @@ Go OS/Arch: linux/amd64"""
         with mock.patch.object(container, "exec") as mock_exec:
             mock_process = mock_exec.return_value
             mock_process.wait_output.return_value = (exec_response, None)
-            admission.tls = tls
             version = admission.version(container)
     (args,), _ = mock_exec.call_args
     for arg in ["--version", "--tls-cert", "--tls-private", "--ca-cert"]:
@@ -101,7 +98,7 @@ class MockExecError(ExecError):
 @pytest.mark.parametrize(
     "failure", [(False, None, ""), (True, MockExecError(), ""), (True, None, "bad-version")]
 )
-def test_version_failure(harness, admission, tls, failure):
+def test_version_failure(harness, admission, failure):
     list_files, exec_error, exec_response = failure
     harness.set_can_connect(CharmVolcano.CONTAINER, True)
     container = harness.model.unit.get_container(CharmVolcano.CONTAINER)
@@ -110,6 +107,5 @@ def test_version_failure(harness, admission, tls, failure):
             mock_process = mock_exec.return_value
             mock_process.wait_output.side_effect = exec_error
             mock_process.wait_output.return_value = (exec_response, None)
-            admission.tls = tls
             version = admission.version(container)
     assert version == "Unknown"

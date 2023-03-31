@@ -20,7 +20,7 @@ CONFIG_FILE = Path("/admission.local.config/volcano-admission.yaml")
 class Admission:
     """Update Pebble config based on charm config and relations."""
 
-    tls: TLSClient = None
+    tls: TLSClient
     config: AdmissionConfig = None
     command: str = ""
 
@@ -51,10 +51,9 @@ class Admission:
         self.command = f"{self.binary} {enabled_admission} {certs} {conf} {webhook_namespace} {webhook_service_name} {logredirect} {port} {loglevel}{extra} 2>&1"
         return self
 
-    def apply(self, charm, tls, config, args):
+    def apply(self, charm, config, args):
         """Update commandline for container."""
         self.config = config
-        self.tls = tls
         self._build_command(charm, args)
         return self
 

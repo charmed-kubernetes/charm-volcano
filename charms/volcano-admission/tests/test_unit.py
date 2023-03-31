@@ -45,7 +45,7 @@ def test_container_ready(mock_manifest, mock_admission, harness, conn_err):
     container = harness.model.unit.get_container(CharmVolcano.CONTAINER)
     harness.charm.on.volcano_pebble_ready.emit(container)
 
-    mock_admission.assert_called_once_with()
+    mock_admission.assert_called_once_with(harness.charm._tls_client)
     mock_manifest.assert_called_once_with(harness.charm)
 
     admission_inst.executable.assert_called_once_with(container)

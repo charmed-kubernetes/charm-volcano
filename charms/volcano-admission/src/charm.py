@@ -12,6 +12,7 @@ develop a new k8s charm using the Operator Framework:
     https://discourse.charmhub.io/t/4208
 """
 
+from functools import cached_property
 import logging
 
 from ops.charm import CharmBase
@@ -79,7 +80,7 @@ class CharmVolcano(CharmBase):
             self.stored.self_signed_cert = True
         self._install_or_upgrade(event)
 
-    @property
+    @cached_property
     def _tls_client(self) -> TLSClient:
         if self.stored.self_signed_cert:
             client = TLSSelfSigned(self)
@@ -90,13 +91,12 @@ class CharmVolcano(CharmBase):
         return client
 
     def _install_or_upgrade(self, event):
-        admission = Admission()
+        admission = Admission(self._tls_client)
 
         try:
             app_args = AdmissionArgs.load(self)
             app_config = AdmissionConfig.load(self)
-            tls_client = self._tls_client
-            admission.apply(self, tls_client, app_config, app_args)
+            admission.apply(self, app_config, app_args)
         except ConfigError as e:
             self.unit.status = BlockedStatus(str(e))
             return
@@ -134,7 +134,7 @@ class CharmVolcano(CharmBase):
         if not container or not container.can_connect():
             return
 
-        version = Admission().version(container)
+        version = Admission(self._tls_client).version(container)
         self.unit.set_workload_version(version)
 
     def _cleanup(self, _):
