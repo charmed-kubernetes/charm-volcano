@@ -77,7 +77,7 @@ class CharmVolcano(CharmBase):
         else:
             # relation not present or broken
             self.stored.self_signed_cert = True
-        self._install_or_upgrade()
+        self._install_or_upgrade(event)
 
     @property
     def _tls_client(self) -> TLSClient:
