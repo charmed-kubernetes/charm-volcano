@@ -123,7 +123,7 @@ jobs:
       run: sudo microk8s.kubectl get all -A 2>&1 | tee tmp/microk8s-status-all.txt
     - name: Collect Juju Status
       if: ${{ failure() }}
-      run: sg snap_microks -c "juju status 2>&1" | tee tmp/juju-status.txt
+      run: sg snap_microk8s -c "juju status 2>&1" | tee tmp/juju-status.txt
     - name: Collect K8s Deployment details
       if: ${{ failure() }}
       run: sudo microk8s.kubectl describe deployments -A 2>&1 | tee tmp/microk8s-deployments.txt
@@ -149,13 +149,13 @@ jobs:
       run: sudo snap logs -n 300 microk8s 2>&1 | tee tmp/snap-log-microk8s.txt
     - name: Collect Juju logs for volcano-admission
       if: ${{ failure() }}
-      run: sudo juju debug-log --replay --no-tail -i volcano-admission | tee tmp/unit-volcano-admission-0.log
+      run: sg snap_microk8s -c "juju debug-log --replay --no-tail -i volcano-admission" | tee tmp/unit-volcano-admission-0.log
     - name: Collect Juju logs for volcano-scheduler
       if: ${{ failure() }}
-      run: sudo juju debug-log --replay --no-tail -i volcano-scheduler | tee tmp/unit-volcano-scheduler-0.log
+      run: sg snap_microk8s -c "juju debug-log --replay --no-tail -i volcano-scheduler" | tee tmp/unit-volcano-scheduler-0.log
     - name: Collect Juju logs for volcano-controller-manager
       if: ${{ failure() }}
-      run: sudo juju debug-log --replay --no-tail -i volcano-controller-manager | tee tmp/unit-volcano-controller-manager-0.log
+      run: sg snap_microk8s -c "juju debug-log --replay --no-tail -i volcano-controllers" | tee tmp/unit-volcano-controllers-0.log
     - name: Upload debug artifacts
       if: ${{ failure() }}
       uses: actions/upload-artifact@v3
