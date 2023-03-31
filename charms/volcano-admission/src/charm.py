@@ -12,8 +12,8 @@ develop a new k8s charm using the Operator Framework:
     https://discourse.charmhub.io/t/4208
 """
 
-from functools import cached_property
 import logging
+from functools import cached_property
 
 from ops.charm import CharmBase
 from ops.framework import StoredState

@@ -21,6 +21,7 @@ def tls() -> TLSClient:
 def admission(tls):
     return Admission(tls)
 
+
 def test_binary(admission):
     assert str(admission.binary) == "/vc-webhook-manager"
 
