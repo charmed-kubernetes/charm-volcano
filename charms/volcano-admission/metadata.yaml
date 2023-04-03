@@ -3,6 +3,8 @@
 name: volcano-admission
 display-name: Volcano Admission
 summary: A Cloud Native Batch System
+issues: https://bugs.launchpad.net/charm-volcano
+docs: https://discourse.charmhub.io/t/volcano-docs-index/9600
 description: |
   Volcano is a batch system built on Kubernetes. 
   It provides a suite of mechanisms that are commonly required by many 

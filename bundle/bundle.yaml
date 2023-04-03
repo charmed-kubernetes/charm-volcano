@@ -1,8 +1,17 @@
+description: |-
+    Deploys Volcano charms to manage Admission, Controllers, and Scheduler
+source: https://github.com/charmed-kubernetes/charm-volcano
+website: https://volcano.sh
+issues: https://bugs.launchpad.net/charm-volcano
+docs: https://discourse.charmhub.io/t/volcano-docs-index/9600
 bundle: kubernetes
 applications:
   volcano-admission:
     charm: volcano-admission
-  volcano-controller-manager:
-    charm: volcano-controller-manager
+    trust: true
+  volcano-controllers:
+    charm: volcano-controllers
+    trust: true
   volcano-scheduler:
     charm: volcano-scheduler
+    trust: true

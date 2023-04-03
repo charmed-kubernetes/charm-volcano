@@ -65,6 +65,8 @@ class CharmVolcano(CharmBase):
         else:
             self.unit.status = ActiveStatus()
 
+        self._set_version(_event)
+
     def _ready_tls(self, event):
         evaluation = self.certificates.evaluate_relation(event)
         if evaluation and "Waiting" in evaluation:
