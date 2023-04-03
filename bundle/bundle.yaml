@@ -1,3 +1,4 @@
+name: volcano
 description: |-
     Deploys Volcano charms to manage Admission, Controllers, and Scheduler
 source: https://github.com/charmed-kubernetes/charm-volcano
