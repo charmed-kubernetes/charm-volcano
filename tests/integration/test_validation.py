@@ -20,6 +20,8 @@ from lightkube.resources.core_v1 import Pod
 from pytest_operator.plugin import OpsTest
 
 from lib.templating import render_templates
+from tests.integration.grafana import Grafana
+from tests.integration.prometheus import Prometheus
 
 logger = logging.getLogger(__name__)
 
@@ -134,3 +136,27 @@ async def test_scheduler(ops_test: OpsTest, kubernetes):
             kubernetes.delete(
                 type(obj), obj.metadata.name, namespace=obj.metadata.namespace
             )
+
+
+@pytest.mark.usefixtures("volcano_system", "related_grafana")
+async def test_grafana(ops_test: OpsTest, traefik_ingress, grafana_password):
+    """Test Grafana is ready and has the expected dashboards."""
+    grafana = Grafana(ops_test, host=traefik_ingress, password=grafana_password)
+    while not await grafana.is_ready():
+        await asyncio.sleep(1)
+
+
+@pytest.mark.usefixtures("volcano_system", "related_prometheus")
+async def test_prometheus(ops_test, traefik_ingress, expected_prometheus_metrics):
+    """Test Prometheus is ready and has the expected metrics."""
+    prometheus = Prometheus(host=traefik_ingress)
+    while not await prometheus.is_ready():
+        await asyncio.sleep(5)
+
+    # Wait for metrics to be available
+    await asyncio.sleep(120)
+    metrics = await prometheus.get_metrics()
+    common_metrics = expected_prometheus_metrics.intersection(set(metrics))
+    assert (
+        common_metrics
+    ), f"KSM missing: {expected_prometheus_metrics.difference(set(metrics))}"

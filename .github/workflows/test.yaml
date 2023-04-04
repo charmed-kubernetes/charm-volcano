@@ -66,6 +66,10 @@ jobs:
         provider: microk8s
         channel: ${{ matrix.microk8s }}
         juju-channel: ${{ matrix.juju }}
+    
+    - name: Setup MetalLB
+      run: |
+        sudo microk8s enable metallb:10.64.140.43-10.64.140.49 
 
     - name: Download charm artifacts
       uses: actions/download-artifact@v3

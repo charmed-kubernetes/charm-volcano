@@ -2,15 +2,21 @@
 
 import asyncio
 import contextlib
+import json
+import shlex
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 
+import pytest
 import pytest_asyncio
 import yaml
-from lightkube import Client, KubeConfig
+from juju.tag import untag
+from lightkube import Client, KubeConfig, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from pytest_operator.plugin import OpsTest
+
+from tests.integration.helpers import get_address
 
 
 @pytest_asyncio.fixture(scope="module")
@@ -141,3 +147,144 @@ async def kubeflow(request, ops_test):
     charm = CharmDeployment(app, application_name=app, channel="1.5/stable", trust=True)
     async with deploy_model(request, ops_test, model, charm) as the_model:
         yield the_model
+
+
+@pytest_asyncio.fixture(scope="module")
+async def cos_lite(ops_test):
+    """Deploy COS lite bundle."""
+    config = {"controller-service-type": "loadbalancer"}
+    cos_charms = [
+        "alertmanager",
+        "catalogue",
+        "loki",
+        "prometheus",
+        "traefik",
+        "grafana",
+    ]
+    model_name = "cos"
+    credential_name = ops_test.cloud_name
+    offers_overlay_path = Path("tests/integration/data/offers-overlay.yaml")
+    await ops_test.track_model(
+        model_name,
+        model_name=model_name,
+        credential_name=credential_name,
+        config=config,
+    )
+    with ops_test.model_context(model_name) as model:
+        overlays = [ops_test.Bundle("cos-lite", "edge"), offers_overlay_path]
+
+        bundle, *overlays = await ops_test.async_render_bundles(*overlays)
+        cmd = f"juju deploy -m {model.name} {bundle} --trust " + " ".join(
+            f"--overlay={f}" for f in overlays
+        )
+        rc, stdout, stderr = await ops_test.run(*shlex.split(cmd))
+        assert rc == 0, f"COS Lite failed to deploy: {(stderr or stdout).strip()}"
+
+        await model.block_until(
+            lambda: all(app in model.applications for app in cos_charms),
+            timeout=60,
+        )
+        await model.wait_for_idle(
+            status="active", timeout=20 * 60, raise_on_error=False
+        )
+
+        yield model
+
+
+@pytest.fixture(scope="module")
+async def traefik_ingress(ops_test, cos_lite):
+    """Get the traefik ingress address."""
+    with ops_test.model_context(cos_lite.name):
+        address = await get_address(ops_test=ops_test, app_name="traefik")
+        yield address
+
+
+@pytest.fixture(scope="module")
+async def dashboard_titles():
+    """Get the Grafana dashboard titles from the charm source."""
+    grafana_dir = Path("charms/volcano-scheduler/src/grafana_dashboards")
+    grafana_files = [
+        p for p in grafana_dir.iterdir() if p.is_file() and p.name.endswith(".json")
+    ]
+    titles = []
+    for path in grafana_files:
+        dashboard = json.loads(path.read_text())
+        titles.append(dashboard["title"])
+    return set(titles)
+
+
+@pytest_asyncio.fixture(scope="module")
+async def related_grafana(ops_test, cos_lite, volcano_system):
+    """Integrate Grafana charm with the volcano-scheduler charm."""
+    model_owner = untag("user-", cos_lite.info.owner_tag)
+    controller_name = ops_test.controller_name
+
+    with ops_test.model_context(volcano_system.name):
+        await ops_test.model.integrate(
+            "volcano-scheduler:grafana-dashboard",
+            f"{controller_name}:{model_owner}/{cos_lite.name}.grafana-dashboards",
+        )
+        with ops_test.model_context(cos_lite.name) as model:
+            await model.wait_for_idle(status="active")
+        await ops_test.model.wait_for_idle(status="active")
+
+    yield
+
+
+@pytest_asyncio.fixture(scope="module")
+@pytest.mark.usefixtures("related_grafana")
+async def grafana_password(ops_test, cos_lite):
+    """Get the Grafana admin password."""
+    with ops_test.model_context(cos_lite.name):
+        action = (
+            await ops_test.model.applications["grafana"]
+            .units[0]
+            .run_action("get-admin-password")
+        )
+        action = await action.wait()
+    return action.results["admin-password"]
+
+
+@pytest.fixture(scope="module")
+async def expected_prometheus_metrics():
+    """Get the expected Prometheus metrics from the charm source."""
+    metrics_path = Path("tests/integration/data/volcano-metrics.json")
+    with open(metrics_path, "r") as file:
+        return set(json.load(file)["data"])
+
+
+@pytest.fixture(scope="module")
+async def kube_state_metrics(kubernetes):
+    """Deploy kube-state-metrics for the Prometheus tests."""
+    ksm_manifest = Path("tests/integration/data/kube-state-metrics.yaml")
+    with open(ksm_manifest, "r") as file:
+        objects = codecs.load_all_yaml(file)
+        for obj in objects:
+            kubernetes.create(obj)
+
+        yield
+
+        for obj in objects:
+            kubernetes.delete(
+                type(obj), obj.metadata.name, namespace=obj.metadata.namespace
+            )
+
+
+@pytest.fixture(scope="module")
+async def related_prometheus(
+    ops_test: OpsTest, cos_lite, volcano_system, kube_state_metrics
+):
+    """Integrate Prometheus charm with the volcano-scheduler charm."""
+    model_owner = untag("user-", cos_lite.info.owner_tag)
+    controller_name = ops_test.controller_name
+
+    with ops_test.model_context(volcano_system.name):
+        await ops_test.model.integrate(
+            "volcano-scheduler:metrics-endpoint",
+            f"{controller_name}:{model_owner}/{cos_lite.name}.prometheus-scrape",
+        )
+        await ops_test.model.wait_for_idle(status="active")
+        with ops_test.model_context(cos_lite.name) as model:
+            await model.wait_for_idle(status="active")
+
+    yield
