@@ -89,12 +89,13 @@ async def deploy_model(request, ops_test, model_name, *deploy_args: CharmDeploym
     if request.config.option.model_config:
         config = ops_test.read_model_config(request.config.option.model_config)
     credential_name = ops_test.cloud_name
-    await ops_test.track_model(
-        model_name,
-        model_name=model_name,
-        credential_name=credential_name,
-        config=config,
-    )
+    if model_name not in ops_test.models:
+        await ops_test.track_model(
+            model_name,
+            model_name=model_name,
+            credential_name=credential_name,
+            config=config,
+        )
     with ops_test.model_context(model_name) as the_model:
         await asyncio.gather(
             *(
@@ -114,8 +115,8 @@ async def deploy_model(request, ops_test, model_name, *deploy_args: CharmDeploym
 
 @pytest_asyncio.fixture(scope="module")
 async def volcano_system(request, ops_test):
-    """Deploy local volcano-system charms."""
-    model = "volcano-system"
+    """Deploy local volcano charms."""
+    model = "main"
     charm_names = ("admission", "controllers", "scheduler")
     charms = [Charm(ops_test, Path("charms") / f"volcano-{_}") for _ in charm_names]
     charm_files = await asyncio.gather(*[charm.resolve() for charm in charms])
@@ -125,7 +126,7 @@ async def volcano_system(request, ops_test):
             resources=charm.resources,
             application_name=charm.app_name,
             series="jammy",
-            trust="scheduler" in charm.app_name,
+            trust=True,
         )
         for path, charm in zip(charm_files, charms)
     ]
