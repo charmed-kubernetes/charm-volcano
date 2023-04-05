@@ -76,7 +76,7 @@ jobs:
   integration-test:
     name: Integration test
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs:
       - lint-unit
       - build-charms

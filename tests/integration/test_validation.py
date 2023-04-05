@@ -114,14 +114,23 @@ async def test_scheduler(ops_test: OpsTest, kubernetes):
             )
 
 
+@pytest.mark.timeout(60 * 5)
 @pytest.mark.usefixtures("volcano_system", "related_grafana")
-async def test_grafana(ops_test: OpsTest, traefik_ingress, grafana_password):
+async def test_grafana(ops_test, traefik_ingress, grafana_password, dashboard_titles):
     """Test Grafana is ready and has the expected dashboards."""
     grafana = Grafana(ops_test, host=traefik_ingress, password=grafana_password)
     while not await grafana.is_ready():
         await asyncio.sleep(1)
+    dashboards = await grafana.dashboards_all()
+    actual_dashboards = set()
+    for dashboard in dashboards:
+        actual_dashboards.add(dashboard["title"])
+    assert dashboard_titles.issubset(
+        actual_dashboards
+    ), f"Missing dashboards: {dashboard_titles.difference(actual_dashboards)}"
 
 
+@pytest.mark.timeout(60 * 5)
 @pytest.mark.usefixtures("volcano_system", "related_prometheus")
 async def test_prometheus(ops_test, traefik_ingress, expected_prometheus_metrics):
     """Test Prometheus is ready and has the expected metrics."""
