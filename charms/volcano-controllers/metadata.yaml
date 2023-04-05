@@ -4,15 +4,10 @@
 # The charm package name, no spaces (required)
 # See https://juju.is/docs/sdk/naming#heading--naming-charms for guidance.
 name: volcano-controllers
- 
-# The following metadata are human-readable and will be published prominently on Charmhub.
-
-# (Recommended)
 display-name: Volcano Controllers
-
-# (Required)
 summary: A Cloud Native Batch System
-
+issues: https://bugs.launchpad.net/charm-volcano
+docs: https://discourse.charmhub.io/t/volcano-docs-index/9600
 description: |
   Volcano is a batch system built on Kubernetes. 
   It provides a suite of mechanisms that are commonly required by many 
@@ -21,3 +16,15 @@ description: |
   These types of applications typically run on generalized domain frameworks 
   like TensorFlow, Spark, Ray, PyTorch, MPI, etc, which Volcano integrates with.
 
+containers:
+  volcano:
+    resource: volcano-controller-image
+
+resources:
+  volcano-controller-image:
+    type: oci-image
+    description: OCI Image for volcano-controller.
+    upstream-source: rocks.canonical.com/cdk/volcanosh/vc-controller-manager:v1.7.0
+
+assumes:
+  - k8s-api

@@ -1,46 +1,64 @@
 """Apply extra manifests for enabling the scheduler and its config."""
 
 import logging
+import re
 from pathlib import Path
 from typing import List, Sequence
 
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from jinja2 import Environment, FileSystemLoader
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import Resource
-from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.apps_v1 import StatefulSet
+from ops.charm import CharmBase
 from ops.model import ModelError
 
 log = logging.getLogger(__name__)
-CRD_BASE = "v1"  # assumes we're in a k8s cluster that has access to v1 CRDs
+
+
+def _regex_match(value: str, regex: str) -> str:
+    """Implement helm `regexMatch`.
+
+    Replacement Helm to Jinja:
+
+    {{- if .Values.custom.enabled_admissions | regexMatch "/pods/mutate" }}
+    becomes
+    {% if Values.custom.enabled_admissions | regexMatch("/pods/mutate") -%}
+    """
+    return re.findall(regex, value)
 
 
 class Manifests:
     """Render manifests from charm config and apply to the cluster."""
 
-    def __init__(self, charm):
+    def __init__(self, charm: CharmBase):
         self._charm = charm
         self.namespace = charm.model.name
         self.application = charm.app.name
         self.client = Client(namespace=self.namespace, field_manager=self.application)
-        load_in_cluster_generic_resources(self.client)
-
-        self.service_port = ServicePort(8080, name=self.application, protocol="TCP")
+        self.service_port = ServicePort(443, name=self.application, protocol="TCP")
         self.service_patcher = KubernetesServicePatch(charm, [self.service_port])
 
     @property
     def _resources(self) -> Sequence[Resource]:
-        templates = Path("templates", "crd", CRD_BASE).glob("*.yaml")
+        templates = (Path("templates/webhooks.yaml"),)
+        context = {
+            "Values": self._config,
+            "Release": {"Charm": self.application, "Namespace": self.namespace},
+        }
+        env = Environment(loader=FileSystemLoader("/"))
+        env.filters["regexMatch"] = _regex_match
         for _ in templates:
-            for obj in codecs.load_all_yaml(_.resolve().open()):
+            rendered = env.get_template(str(_.resolve())).render(context)
+            for obj in codecs.load_all_yaml(rendered):
                 yield obj
 
     @property
     def _patches(self) -> Sequence[dict]:
         patches = []
-        # - Adjust the charm's priorityClassname
+        # - Adjust the charm's priorityClassname (requires charm trust)
         patch = {"spec": {"template": {"spec": {"priorityClassName": "system-cluster-critical"}}}}
         patches.append(
             dict(
@@ -62,7 +80,12 @@ class Manifests:
 
     @property
     def _config(self) -> dict:
-        return dict()
+        return dict(
+            custom=dict(
+                admission_enable=True,
+                enabled_admissions="/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate",
+            ),
+        )
 
     def _delete_resource(
         self,
