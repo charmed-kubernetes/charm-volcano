@@ -220,7 +220,7 @@ async def related_grafana(ops_test, cos_lite, volcano_system):
     model_owner = untag("user-", cos_lite.info.owner_tag)
     controller_name = ops_test.controller_name
 
-    with ops_test.model_context(volcano_system.name):
+    with ops_test.model_context("main"):
         await ops_test.model.integrate(
             "volcano-scheduler:grafana-dashboard",
             f"{controller_name}:{model_owner}/{cos_lite.name}.grafana-dashboards",
@@ -279,7 +279,7 @@ async def related_prometheus(
     model_owner = untag("user-", cos_lite.info.owner_tag)
     controller_name = ops_test.controller_name
 
-    with ops_test.model_context(volcano_system.name):
+    with ops_test.model_context("main"):
         await ops_test.model.integrate(
             "volcano-scheduler:metrics-endpoint",
             f"{controller_name}:{model_owner}/{cos_lite.name}.prometheus-scrape",
