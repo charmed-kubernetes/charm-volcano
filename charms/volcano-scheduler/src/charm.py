@@ -14,6 +14,8 @@ develop a new k8s charm using the Operator Framework:
 
 import logging
 
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
@@ -21,6 +23,7 @@ from ops.pebble import ConnectionError
 
 from config import ConfigError, SchedulerArgs, SchedulerConfig
 from manifests import Manifests
+from prometheus import Prometheus
 from scheduler import Scheduler
 
 # Log messages can be retrieved using juju debug-log
@@ -38,9 +41,15 @@ class CharmVolcano(CharmBase):
         super().__init__(*args)
         self.framework.observe(self.on.upgrade_charm, self._install_or_upgrade)
         self.framework.observe(self.on.volcano_pebble_ready, self._install_or_upgrade)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.update_status, self._update_status)
         self.framework.observe(self.on.leader_elected, self._set_version)
         self.framework.observe(self.on.stop, self._cleanup)
+
+        self.prometheus = Prometheus(self.model.config["kube-state-metrics-namespace"])
+
+        self.grafana_dashboards_provider = GrafanaDashboardProvider(self)
+        self.metrics_endpoint = MetricsEndpointProvider(self, jobs=self.prometheus.scrape_jobs)
 
     def _update_status(self, _event):
         container = self.model.unit.get_container(self.CONTAINER)
@@ -81,6 +90,12 @@ class CharmVolcano(CharmBase):
             return
 
         self.unit.status = MaintenanceStatus("Waiting for scheduler to start")
+
+    def _on_config_changed(self, _event):
+        metrics_namespace = self.model.config["kube-state-metrics-namespace"]
+        if metrics_namespace != self.prometheus.namespace:
+            self.prometheus.namespace = metrics_namespace
+            self.metrics_endpoint.update_scrape_job_spec(self.prometheus.scrape_jobs)
 
     def _set_version(self, _event=None):
         if not self.unit.is_leader():

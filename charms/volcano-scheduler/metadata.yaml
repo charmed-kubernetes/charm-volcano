@@ -26,6 +26,12 @@ resources:
     description: OCI Image for volcano-scheduler.
     upstream-source: rocks.canonical.com/cdk/volcanosh/vc-scheduler:v1.7.0
 
+provides:
+  grafana-dashboard:
+    interface: grafana_dashboard
+  metrics-endpoint:
+    interface: prometheus_scrape
+
 peers:
   volcano:
     interface: volcano-scheduler
