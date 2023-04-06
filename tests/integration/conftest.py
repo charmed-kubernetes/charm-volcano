@@ -153,7 +153,10 @@ async def kubeflow(request, ops_test):
 @pytest_asyncio.fixture(scope="module")
 async def cos_lite(ops_test):
     """Deploy COS lite bundle."""
-    config = {"controller-service-type": "loadbalancer"}
+    config = {
+        "controller-service-type": "loadbalancer",
+        "automatically-retry-hooks": "true",
+    }
     cos_charms = [
         "alertmanager",
         "catalogue",
