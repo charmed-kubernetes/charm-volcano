@@ -1,4 +1,4 @@
 ops >= 2.1.1,<3.0.0
 jinja2
 lightkube
-git+https://github.com/charmed-kubernetes/interface-tls-certificates.git@027f3e24fa0eaf4734f937e27b8ca889653207e3#subdirectory=ops
+git+https://github.com/charmed-kubernetes/interface-tls-certificates.git@a565f00a9bdc5814c77b93dd2ddd5371c9145dbb#subdirectory=ops
