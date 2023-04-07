@@ -12,3 +12,9 @@ options:
       Acceptable values are: "info", "debug", "warning", "error" and "critical"
     default: "info"
     type: string
+  kube-state-metrics-namespace:
+    description: |
+      The namespace where kube-state-metrics is deployed. Volcano scheduler will
+      use this to define the scrape job for Prometheus.
+    default: "kube-system"
+    type: string
