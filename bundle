@@ -30,6 +30,7 @@ echo "Output Path = '${output}'"
 echo "Channel     = '${channel}'"
 
 mkdir -p "${output}"
-for f in ./.bundle_template/*; do
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+for f in ${SCRIPT_DIR}/.bundle_template/*; do
     CHANNEL=$channel envsubst < "${f}" > ${output}/$(basename ${f})
 done
