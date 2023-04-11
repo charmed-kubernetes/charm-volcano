@@ -32,4 +32,13 @@ charmcraft pack -p charms/volcano-controllers
 charmcraft pack -p charms/volcano-scheduler
 ```
 
-<!-- You may want to include any contribution/style guidelines in this document>
+## Build the bundle
+
+The bundle is created via the `.bundle_template` and the `bundle` executable within this repo.  
+
+```shell
+./bundle -n volcano -o /tmp/path -c 1.27/stable
+charmcraft pack -p /tmp/path
+```
+
+The built bundle will be a zip file at `/tmp/path/volcano.zip`

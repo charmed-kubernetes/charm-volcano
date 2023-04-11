@@ -9,10 +9,13 @@ bundle: kubernetes
 applications:
   volcano-admission:
     charm: volcano-admission
+    channel: ${CHANNEL}
     trust: true
   volcano-controllers:
     charm: volcano-controllers
+    channel: ${CHANNEL}
     trust: true
   volcano-scheduler:
     charm: volcano-scheduler
+    channel: ${CHANNEL}
     trust: true
