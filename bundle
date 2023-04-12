@@ -1,4 +1,10 @@
 #!/bin/bash
+# Uses every file in `./.bundle_template/` as a template
+# populated with CHANNEL from the argument and writes the
+# files to the output_path argument.
+#
+# This is useful for the jenkins CI to create bundles
+# which contain the appropriate charm channel.
 
 usage() { echo "Usage: $0 -n name -o output_path -c channel" 1>&2; exit 1; }
 
