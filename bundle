@@ -1,6 +1,6 @@
 #!/bin/bash
 
-usage() { echo "Usage $0 [-n name] -o output_path -c channel" 1>&2; exit 1; }
+usage() { echo "Usage: $0 -n name -o output_path -c channel" 1>&2; exit 1; }
 
 while getopts "n:o:c:" arg; do
     case "${arg}" in
