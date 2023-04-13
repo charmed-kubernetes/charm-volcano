@@ -1,0 +1,41 @@
+#!/bin/bash
+# Uses every file in `./.bundle_template/` as a template
+# populated with CHANNEL from the argument and writes the
+# files to the output_path argument.
+#
+# This is useful for the jenkins CI to create bundles
+# which contain the appropriate charm channel.
+
+usage() { echo "Usage: $0 -n name -o output_path -c channel" 1>&2; exit 1; }
+
+while getopts "n:o:c:" arg; do
+    case "${arg}" in
+        n)
+            name=${OPTARG}
+            ;;
+        o)
+            output=${OPTARG}
+            ;;
+        c)
+            channel=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${name}" ] || [ -z "${output}" ] || [ -z "${channel}" ]; then
+    usage
+fi
+
+echo "Bundle      = '${name}'"
+echo "Output Path = '${output}'"
+echo "Channel     = '${channel}'"
+
+mkdir -p "${output}"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+for f in ${SCRIPT_DIR}/.bundle_template/*; do
+    CHANNEL=$channel envsubst < "${f}" > ${output}/$(basename ${f})
+done
