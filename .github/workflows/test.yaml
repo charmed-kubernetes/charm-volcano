@@ -60,14 +60,14 @@ jobs:
         sudo charmcraft pack -p charms/${{ matrix.charm }}
 
     - name: Upload charm artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.charm }}
         path: ./*.charm
 
     - name: Upload debug artifacts
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: charmcraft-logs
         path: /home/runner/snap/charmcraft/common/cache/charmcraft/log/charmcraft-*.log
@@ -101,15 +101,15 @@ jobs:
 
     # download each of the above built charms
     - name: Download volcano-admission charm
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: volcano-admission
     - name: Download volcano-controllers charm
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: volcano-controllers
     - name: Download volcano-scheduler charm
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: volcano-scheduler
 
@@ -162,7 +162,7 @@ jobs:
       run: sg snap_microk8s -c "juju debug-log --replay --no-tail -i volcano-controllers" | tee tmp/unit-volcano-controllers-0.log
     - name: Upload debug artifacts
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-run-artifacts
         path: tmp
