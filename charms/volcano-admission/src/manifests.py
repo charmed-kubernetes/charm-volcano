@@ -48,7 +48,7 @@ class Manifests:
             "Values": self._config,
             "Release": {"Charm": self.application, "Namespace": self.namespace},
         }
-        env = Environment(loader=FileSystemLoader("/"))
+        env = Environment(loader=FileSystemLoader("/")) # nosec B701
         env.filters["regexMatch"] = _regex_match
         for _ in templates:
             rendered = env.get_template(str(_.resolve())).render(context)
